@@ -1,52 +1,1463 @@
+#############################################################################	
+# TESTANDO 40
+# Author: Rodrigo Santos Rocha
+# Using Gorbach's data:
+# https://doi.org/10.1023/B:ADSO.0000024033.60103.ff
+#############################################################################	
+
 using "FDM";
+using "streams";
 
-FlowSheet FDM_din
 
-	PARAMETERS
-	Da as Real;
-	Pe as Real;
-	m as Real;
 
+
+
+FlowSheet TESTANDO_FDM
+
+	#VARIABLES
+	#zb_H2O as Real (Brief = "Water Molar Fraction");
+
+	#EQUATIONS
+	#zb_H2O = SIEVE.FD.respzb(SIEVE.ne*SIEVE.np-(SIEVE.ne-1),1);
+
+
+	#######
+	OPTIONS
+	#######
+	
+	TimeStep = 0.1; # TimeStep = 0.01;
+	TimeEnd = 25.0; # TimeEnd = 2053;
+	TimeUnit = 'h';
+	Dynamic = true;
+	#GuessFile = "TESTANDO_GORBACH2004_1-7.rlt";
+
+	NLASolver(
+		#File = "sundials",
+		RelativeAccuracy = 1.0E-05,
+		AbsoluteAccuracy = 1.0E-06,
+		MaxIterations = 2000
+	);
+	
+	DAESolver(
+		File = "dasslc", #dasslc #pside #sundials
+		RelativeAccuracy = 1.0E-05,
+		AbsoluteAccuracy = 1.0E-06,
+		EventAccuracy = 1.0E-02
+
+	);
+
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+	
+	#######	
 	DEVICES
+	#######
 	
-	#Carregando o modulo de diferencas finitas
-	FD as MDF;
+	#FEED as source;
+	SIEVE as ADSORPTION;
 	
+	#CONNECTIONS
+	#FEED.OUTLET to SIEVE.INLET;
+
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+	##########	
+	PARAMETERS
+	##########
+
+	##### ----- MATERIAL BALANCE --- #####
+
+	# ----- Thermodynamic Properties -----
+	
+	PP as Plugin (Brief = "Physical Properties", Type="PP", Project = "PP_GORBACH.vrtherm"); # Peng-Robinson: H2O, CO2, CH4, C5H12
+	NComp as Integer (Brief = "Number of Components");
+
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+	###	
 	SET
+	###
+
+	##### ----- DISCRETIZATION ----- #####
+
+	# ----- Number of Finite Elements -----
 	
 	#Especificando o valor de x0
-	FD.xi = 0;
+	SIEVE.FD.xi = 0.0;
 	#Especificando o valor de xf
-	FD.xf = 1;
+	SIEVE.FD.xf = 1.0;
 	#Especificando o valor de N
-	FD.N = 1000;
+	SIEVE.FD.N = 20;
 
-	Da = 5;
-	m = 1;
-	Pe = 2;
 
-	EQUATIONS
-	
-	#Equacao do modelo
-	diff(FD.y)*'s' = (1/Pe)*FD.dif2y - FD.dif1y - Da*FD.y^m;
+	##### ----- MATERIAL BALANCE --- #####
 
-	#Especificando as condicoes de contorno
-	#Para x=xf
-	FD.dif1y(FD.N+1)=0;
+	# ----- Thermodynamic Properties -----
 	
-	#Para x=xi
-	-1/Pe * FD.dif1y(1) = 1 - FD.y(1);	
-	#FD.y(1)=1;	
+	NComp = PP.NumberOfComponents; 
+
+	# ----- Porosity -----
 	
-	INITIAL
-	#Condicao inicial
-	FD.y(2:FD.N)=0;
+	SIEVE.ei = 0.40; # BENYAHIA2005
+	SIEVE.epsilon = 0.63; # AHN2004
+	
+	# ----- Isotherm -----
+
+	SIEVE.Isotherm = "DualSiteLang"; 
+	# Define the Isotherm: "ExtDualSiteLang", "DualSiteLang", "Lang3", "Lang"
+	
+	SIEVE.Aging = 1.000;
+	
+	# ----- Choosing the LDF Model -----
+		
+	SIEVE.LDF_Model = "LDF_Macro"; # "LDF_Macro_ExtFilm"; # "LDF_Micro_Macro_ExtFilm"; "Fitting_kldf";
+	# Define the particle mass transfer model: "LDF_Micro", "LDF_Macro", "LDF_ExtFilm", "LDF_Micro_Macro", "LDF_Micro_ExtFilm", "LDF_Macro_ExtFilm", "LDF_Micro_Macro_ExtFilm", "Fitting_kldf"
+
+	#SIEVE.defined_kldf = [10.71927E-03,8.45163E-03,8.82451E-03,1.90798E-03]*'1/s'; # (Vasconcelos2020)
+	#SIEVE.defined_kldf = [0.0000247876677795747,0.0090919096124952,0.060394849112245]*'1/s';
+	SIEVE.defined_kldf_H2O = 0.00052; # Cavalcante calculado
+	SIEVE.defined_kldf = [SIEVE.defined_kldf_H2O, 0.0, 0.0]*'1/s'; # Cavalcante estimado
+
+	SIEVE.Theta = 0.0345*'1/s';
+	SIEVE.Zero = 1.0E-10;
+	
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+	#######	
+	SPECIFY
+	#######	
+
+	##### ----- DISCRETIZATION ----- #####
+
+	# ----- Number of Nodal Points -----
+	
+	
+	##### ----- MATERIAL BALANCE --- #####
+
+	# ----- Initial Variables -----	
+	
+	# Mw=28.96
+	#SIEVE.zini = [0.0, 0.7624948387893985, 0.23750516121060147]; # -> CASO A
+	#SIEVE.zini = [0.0, 0.7624563387036832, 0.23754366129631674]; # -> CASO B
+	SIEVE.zini = [0.0, 0.7624926913583224, 0.2375073086416776]; # -> CASO C
+	#SIEVE.zini = [0.0, 0.7625098697197, 0.2374901302803]; # -> CASO D
+
+	# Mw=30.45
+	#SIEVE.zini = [0.0, 0.3886013910404401, 0.6113986089595599]; # -> CASO A
+	#SIEVE.zini = [0.0, 0.3886319920850955, 0.6113680079149045]; # -> CASO B
+	#SIEVE.zini = [0.0, 0.38859586300742344, 0.6114041369925766]; # -> CASO C
+	#SIEVE.zini = [0.0, 0.38864008447274634, 0.6113599155272537]; # -> CASO D
+	
+	# ----- Inlet Variables -----	
+
+	# Mw=28.96
+	#SIEVE.zi0 = [0.004594, 0.7589919375, 0.23641406249999997]; # -> CASO A
+	#SIEVE.zi0 = [0.004410, 0.75909390625, 0.23649609374999997]; # -> CASO B
+	SIEVE.zi0 = [0.004603, 0.7589829375, 0.23641406249999997]; # -> CASO C
+	#SIEVE.zi0 = [0.004531, 0.7590549375000001, 0.23641406249999997]; # -> CASO D
+
+	# Mw=30.45
+	#SIEVE.zi0 = [0.004594, 0.3868161562500003, 0.6085898437499997]; # -> CASO A
+	#SIEVE.zi0 = [0.004410, 0.3869181250000002, 0.6086718749999998]; # -> CASO B
+	#SIEVE.zi0 = [0.004603, 0.3868071562500003, 0.6085898437499997]; # -> CASO C
+	#SIEVE.zi0 = [0.004531, 0.38687915625000036, 0.6085898437499997]; # -> CASO D
+	
+	#SIEVE.T0 = ((30.0)+273.15)*'K'; # -> CASO A
+	#SIEVE.T0 = ((30.0)+273.15)*'K'; # -> CASO B
+	SIEVE.T0 = ((50.0)+273.15)*'K'; # -> CASO C
+	#SIEVE.T0 = ((80.0)+273.15)*'K'; # -> CASO D
+	
+	#SIEVE.P0 = (5.0)*'bar'; # -> CASO A
+	#SIEVE.P0 = (2.0)*'bar'; # -> CASO B
+	SIEVE.P0 = (2.0)*'bar'; # -> CASO C
+	#SIEVE.P0 = (2.0)*'bar'; # -> CASO D
+
+	#SIEVE.Fnormal = (1.84)*'l/min'; # -> CASO A
+	#SIEVE.Fnormal = (1.998)*'l/min'; # -> CASO B
+	SIEVE.Fnormal = (2.00)*'l/min'; # -> CASO C
+	#SIEVE.Fnormal = (1.98)*'l/min'; # -> CASO D
+	
+	# ----- Geometry -----
+	
+	SIEVE.dB = (0.01)*'m'; 
+	SIEVE.L = (0.797)*'m';
+
+	SIEVE.Rp = (0.0005)*'m';
+	SIEVE.Rc = (0.00166)*'m';
+	SIEVE.rp = (1.086E-07)*'m';
+
+	SIEVE.Vatomic = [13.1, 18.5, 16.3]*'m^3'; # FULLER1969
+	SIEVE.tortuosity = 4.0; # AHN2004 # tortuosity = 1;
+	
+	# ----- Thermodynamic Properties -----
+
+	#SIEVE.Zi0 = (0.838059442299991); # Cavalcante2023
+	
+	# ----- Bulk Transport Properties -----
+
+	#SIEVE.Mwb = (21.633160396967518)*'kg/kmol'; # Cavalcante2023 
+	#SIEVE.mub = (0.0000142295157278945)*'kg/m/s'; # Cavalcante2023
+	#SIEVE.rhob = (73.6950823557062)*'kg/m^3'; # Cavalcante2023
+	#SIEVE.rhop = 1091*'kg/(m^3)'; # SEABRA2019
+	SIEVE.rhoB = (736.5)*'kg/m^3';
+
+	##### ----- ENERGY BALANCE ----- #####
+
+	# ----- Initial Variables -----	
+	
+	SIEVE.Tbini = SIEVE.T0; # 323*'K';
+
+	# ----- Bulk Energy Transport Properties -----
+	
+	#SIEVE.Kb = (0.0368428903477514)*'W/m/K'; # Cavalcante2023
+	#SIEVE.Cpb_mol = (47.4416081509794)*'kJ/kmol/K'; # Cavalcante2023
+
+	SIEVE.Hads = [-54.961, 0.0, 0.0]*'kJ/mol'; # H2O, N2, O2 (CAVALCANTE2023)
+	SIEVE.Cpp = 0.920*'kJ/kg/K'; # 
+	
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+	#######
+	INITIAL # tau=0
+	#######
+
+	##### ----- MATERIAL BALANCE ----- #####
+	
+	# ----- Bulk Material Balance Initial Conditions -----
+
+	#SIEVE.OCFEM.Yb(2:SIEVE.OCFEM.np-1,1:SIEVE.OCFEM.ne,1) = SIEVE.Ybini(1);
+	SIEVE.FD.Yb(2:SIEVE.nd-1,1) = SIEVE.Ybini(1);
+	SIEVE.FD.Yb(2:SIEVE.nd-1,2) = SIEVE.Ybini(2);
+	SIEVE.FD.Yb(2:SIEVE.nd-1,3) = SIEVE.Ybini(3);
+	
+	# ----- Solid Material Balance Initial Conditions -----
+
+	#SIEVE.OCFEM.ub(1:SIEVE.OCFEM.np,1:SIEVE.OCFEM.ne,1) = SIEVE.uini(1);
+	SIEVE.FD.ub(1:SIEVE.nd,1) = SIEVE.uini(1);
+	SIEVE.FD.ub(1:SIEVE.nd,2) = SIEVE.uini(2);
+	SIEVE.FD.ub(1:SIEVE.nd,3) = SIEVE.uini(3);
+	# Vai de 1 ate np porque ub nao tem derivada com relacao a Z
+
+	##### ----- ENERGY BALANCE ------- #####
+
+	# ----- Bulk Energy Balance Initial Conditions -----
+
+	#SIEVE.OCFEM.THETAb(2:SIEVE.OCFEM.np-1,1:SIEVE.OCFEM.ne) = SIEVE.THETAbini;
+	SIEVE.FD.THETAb(2:SIEVE.nd-1) = SIEVE.THETAbini; 
+	
+	# ----- Solid Energy Balance Initial Conditions -----
+
+	#SIEVE.OCFEM.THETAp(1:SIEVE.OCFEM.np,1:SIEVE.OCFEM.ne) = SIEVE.THETApini; 
+	SIEVE.FD.THETAp(1:SIEVE.nd) = SIEVE.THETApini; 
+	# Vai de 1 ate np porque THETAp nao tem derivada com relacao a Z
+
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+end
+
+CaseStudy Case_Study as TESTANDO_FDM
+	
+	VARY
+	
+	#SIEVE.defined_kldf_H2O = [ 0.00050 : 0.00001 : 0.00054 ];
+	SIEVE.epsilon = [ 0.10 : 0.10 : 0.90 ];
+	SIEVE.ei = [ 0.10 : 0.10 : 0.90 ];
+
+	RESPONSE
+	
+	zb_H2O;
+
+end
+
+Estimation Estimating as TESTANDO_FDM
+	
+	ESTIMATE
+	# PARAMETER  		START     LOWER     UPPER
+	SIEVE.epsilon		0.63000    0.10000    0.90000;
+	SIEVE.ei			0.40000    0.10000    0.90000;
+
+	EXPERIMENTS
+	# DATA FILE             WEIGTH
+	"Teste.dat"      		1;
 	
 	OPTIONS
-	TimeStep = 0.02;
-	TimeEnd = 0.5;
-	TimeUnit = 's';
-	Dynamic = true;
+	
+	NLPSolver(
+		Dynamics = true,
+		MaxIterations = 1000,
+#		File = "complex"
+		File = "ipopt_emso"
+	);
 end
 
 
+Optimization OPTIMIZATION
+	
+	SPECIFY
+	zi0_H2O = 0.004594;
+	Desirable_Mw_Air = 28.96*'kg/kmol';
+
+	SET 
+	Mw_O2 = 31.9988*'kg/kmol';
+	Mw_N2 = 28.0134*'kg/kmol';	
+
+	VARIABLES
+	zi0_N2 as Real (Brief = "Inlet N2 Molar Fraction", Default=0.79, Lower=1.0E-06, Upper=1.0);
+	zi0_O2 as Real (Brief = "Inlet O2 Molar Fraction", Default=0.21, Lower=1.0E-06, Upper=1.0);
+	zini_N2 as Real (Brief = "Initial N2 Molar Fraction", Default=0.79, Lower=1.0E-06, Upper=1.0);
+	zini_O2 as Real (Brief = "Initial N2 Molar Fraction", Default=0.21, Lower=1.0E-06, Upper=1.0);
+	zi0_H2O as Real (Brief = "Calculated Air Molecular Weight", Default=0.004594, Lower=1.0E-06, Upper=1.0);
+    Calc_Mw_Air as Real (Brief = "Calculated Air Molecular Weight", Unit = 'kg/kmol', Default=0.21);
+    Desirable_Mw_Air as Real (Brief = "Desirable Air Molecular Weight", Unit = 'kg/kmol', Default=28.96);
+
+	PARAMETERS
+	Mw_O2 as Real (Brief = "O2 Molecular Weight", Unit = 'kg/kmol', Default=0.21, Lower=1.0E-06, Upper=1.0);
+	Mw_N2 as Real (Brief = "N2 Molecular Weight", Unit = 'kg/kmol', Default=0.21, Lower=1.0E-06, Upper=1.0);
+	
+	EQUATIONS
+    zi0_N2 = (1 - zi0_H2O) - zi0_O2;
+	
+	zini_N2 =  zi0_N2/(zi0_O2+zi0_N2);
+	zini_O2 = zi0_O2/(zi0_O2+zi0_N2);
+	
+    Calc_Mw_Air = Mw_O2 * zi0_O2/(zi0_O2+zi0_N2) + Mw_N2 * zi0_N2/(zi0_O2+zi0_N2);
+
+	MINIMIZE
+	(Calc_Mw_Air - Desirable_Mw_Air)^2;
+
+	OPTIONS
+	NLPSolver(MaxIterations=2000,
+			  AbsoluteAccuracy=1e-10,
+			  RelativeAccuracy=1e-10,
+			  #File = "ipopt_emso", hessian_approximation = "exact"
+			  #File = "complex"
+	          #File = "optpp_emso"
+			  #File = "arshj"
+			  #File = "PSO"
+			  File = "ipopt_emso"
+			  );
+	Dynamic = false;
+end
+
+
+################################################################################
+################################################################################
+##### ----- MODEL -------------------------------------------------------- #####
+################################################################################
+################################################################################
+
+
+Model ADSORPTION
+
+
+	##########
+	PARAMETERS
+	##########
+
+	##### ----- DISCRETIZATION ----- #####
+	
+	# ----- Number of Nodal Points -----
+	
+	nd as Integer (Brief = "Number of Nodal Points");
+		
+	##### ----- MATERIAL BALANCE ----- #####
+	
+	# ----- Inlet Variables -----
+
+	outer NComp as Integer (Brief = "Number of Components");	
+	
+	# ----- Geometry -----	
+	
+	PInumber as positive (Brief = "PI Number Constant");
+	
+	# ----- Transport Properties -----	
+	
+	M(NComp) as molweight (Brief = "Pure Component Molecular Weight");
+	
+	# ----- Thermodynamics Properties -----	
+	
+	outer PP as Plugin (Brief = "Physical Properties", Type="PP", Project = "PP_GORBACH.vrtherm");
+	R as Real (Brief = "Universal Gas Constant", Unit = 'J/(mol*K)');
+	
+	Tnormal as temperature (Brief = "Normal Temperature");
+	Pnormal as positive (Brief = "Normal Pressure", Unit = 'kPa');
+	
+	# ----- Porosities -----	
+	
+	ei as positive (Brief = "Interparticle Voidage");
+	epsilon as positive (Brief = "Total Bed Voidage");
+	
+	# ----- Choosing the LDF Model -----
+
+	LDF_Model as Switcher (Valid = ["LDF_Micro", "LDF_Macro", "LDF_ExtFilm", "LDF_Micro_Macro", "LDF_Micro_ExtFilm", "LDF_Macro_ExtFilm", "LDF_Micro_Macro_ExtFilm", "Fitting_kldf"], Default = "Fitting_kldf");
+
+	defined_kldf(NComp) as Real (Brief = "Global Mass Transfer Coefficient", Unit = '1/s');
+	defined_kldf_H2O as Real (Brief = "Global Mass Transfer Coefficient for Water");
+	
+	Zero as Real (Brief = "Parameter for the Gorbach LDF Model");
+	Theta as Real (Brief = "Parameter for the Gorbach LDF Model", Unit = '1/s');
+	
+	##### ----- ISOTHERM -----
+
+	Isotherm as Switcher (Valid = ["Gorbach", "ExtDualSiteLang", "DualSiteLang", "Lang3"], Default = "DualSiteLang");	
+	
+	Aging as Real (Brief = "Aging Factor");
+
+	# ----- Extended Dual Site Langmuir Isotherm (Gholami2010b)
+	
+	D0(NComp) as Real (Brief = "Corrected Crystalline Difusivity", Unit = 'm^2/s');
+	Energy(NComp) as Real (Brief = "Affinity Constant Activation Energy", Unit = 'J/mol');
+	b0(NComp,2) as Real (Unit = '1/kPa');
+	E(NComp,2) as Real (Brief = "Affinity Constant Activation Energy", Unit = 'J/mol');	
+	A1(NComp,2) as Real (Brief = "Adsorption Equilibrium Parameters", Unit = '(mol*K)/kg');
+	A2(NComp,2) as Real (Brief = "Adsorption Equilibrium Parameters", Unit = 'mol/kg');
+
+	# ----- Extended Dual Site Langmuir Isotherm (Cavalcante2023)
+
+	IPC1(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = 'kmol/kg/bar');
+	IPC2(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = 'K');
+	IPC3(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = '1/bar');
+	IPC4(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = 'K');
+	IPC5(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = 'kmol/kg/bar');
+	IPC6(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = 'K');
+	IPC7(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = '1/bar');
+	IPC8(NComp) as Real (Brief = "Estimated Isotherm Parameters", Unit = 'K');
+
+	# ----- Langmuir 3 Isotherm (Vasconcelos2020) # O "quarto" elemento nao e adsorvido, logo e igual a zero.
+	
+	IPV1(NComp) as Real (Brief = "Estimated Langmuir 3 Isotherm Parameters", Unit = 'kmol/kg');
+	IPV2(NComp) as Real (Brief = "Estimated Langmuir 3 Isotherm Parameters", Unit = 'kmol/kg/K');
+	IPV3(NComp) as Real (Brief = "Estimated Langmuir 3 Isotherm Parameters", Unit = '1/bar');
+	IPV4(NComp) as Real (Brief = "Estimated Langmuir 3 Isotherm Parameters", Unit = 'K');
+
+	# ----- Gorbach Isotherm
+	
+	b00_kgperkg as Real (Brief = "Gorbach Parameter b0,0", Unit = 'kg/kg');
+	b10 as Real (Brief = "Gorbach Parameter b1,0", Unit = '1/bar'); 
+	b20 as Real (Brief = "Gorbach Parameter b2,0", Unit = '1/bar^2');
+	b30 as Real (Brief = "Gorbach Parameter b3,0", Unit = '1/bar');
+	b40 as Real (Brief = "Gorbach Parameter b4,0", Unit = '1/bar^2');
+
+	b00 as Real (Brief = "Gorbach Parameter b0,0", Unit = 'kmol/kg');
+
+	b0T as Real (Brief = "Gorbach Parameter b0,T");
+	b1T as Real (Brief = "Gorbach Parameter b1,T");
+	b2T as Real (Brief = "Gorbach Parameter b2,T");
+	b3T as Real (Brief = "Gorbach Parameter b3,T");
+	b4T as Real (Brief = "Gorbach Parameter b4,T");
+
+	Tref as Real (Brief = "Gorbach Reference Temperature", Unit = 'K');
+
+	# ---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+	###
+	SET
+	###
+
+	##### ----- DISCRETIZATION ----- #####
+	
+	# ----- Number of Nodal Points -----
+
+	nd = FD.N + 1;
+	
+	##### ----- MATERIAL BALANCE ----- #####
+
+	# ----- Geometry -----	
+
+	PInumber = 3.14159265359;
+	
+	# ----- Transport Properties -----	
+
+	#M = [18.02,44.01,16.04]*'kg/kmol'; 
+	M = PP.MolecularWeight(); # Pure Component Molar Weight
+	
+	# ----- Thermodynamics Properties -----	
+	
+	R = 8.314462618*'kJ/(kmol*K)'; # R = 8.314*'kJ/(kmol*K)';
+
+	Tnormal = (0.0+273.15)*'K';
+	Pnormal = 1.0*'atm'; # 101.325*'kPa';
+	
+	##### ----- ISOTHERM -----
+
+	# ----- Extended Dual Site Langmuir Isotherm (Gholami2010b)
+	
+	b0(:,1) = [3.58E-07,3.32E-07,6.77E-06]*'1/kPa'; # Gholami2010b 3 Components
+	b0(:,2) =  [1.62E-05,6.43E-07,6.13E-07]*'1/kPa'; # Gholami2010b 3 Components
+	E(:,1) = [44140.040,41077.100,13672.210]*'J/mol'; # Gholami2010b 3 Components
+	E(:,2) = [45199.990,29812.290,20307.220]*'J/mol'; # Gholami2010b 3 Components
+	A1(:,1) = [-3799.94,516.743,348.971]*'(mol*K)/kg'; #A11: primeiro parametro do primeiro sitio # Gholami2010b 3 Components
+	A1(:,2) = [3684.491,-932.131,348.971]*'(mol*K)/kg';	#A21: segundo parametro do primeiro sitio # Gholami2010b 3 Components
+	A2(:,1) = [18.711,-0.794,0.542]*'mol/kg'; #A12 # Gholami2010b 3 Components
+	A2(:,2) = [-4.45,6.083,0.542]*'mol/kg'; #A22 # Gholami2010b 3 Components
+	Energy = [17288.47,26334.00,12551.94]*'J/mol'; # Gholami2010b 3 Components
+	D0 = [2.39E-08,5.90E-11,7.20E-12]*'(m^2)/s'; # Gholami2010b 3 Components
+
+	# ----- Extended Dual Site Langmuir Isotherm (Cavalcante2023)
+	
+	IPC1 = [2.57664E-08,0.00000,0.00000]*'kmol/kg/bar'; #IPC1 # Zerei para N2 e O2, pois estes elementos nao adsorvem no leito
+	IPC2 = [6745.02002,406.364,2439]*'K'; #IPC2 
+	IPC3 = [2.65809E-06,0.275,3.414E-05]*'1/bar'; #IPC3
+	IPC4 = [6750.42677,0.0,2555]*'K'; #IPC4
+	IPC5 = [6.12115E-05,0.00000,0.00000]*'kmol/kg/bar'; #IPC5 # Zerei para N2 e O2, pois estes elementos nao adsorvem no leito
+	IPC6 = [5694.62358,562.917,0.0]*'K'; #IPC6
+	IPC7 = [0.05923,43.57,10000]*'1/bar'; #IPC7
+	IPC8 = [5553.31015,107.742,0.0]*'K'; #IPC8
+
+	# ----- Langmuir 3 Isotherm (Vasconcelos2020) # O "quarto" elemento nao e adsorvido, logo e igual a zero.
+	
+	IPV1 = [0.015358000,0.004949088,0.003152522]*'kmol/kg'; #Vasconcelos2020
+	IPV2 = [2.29060E-05,6.29477E-06,0.0]*'kmol/kg/K'; #Vasconcelos2020
+	IPV3 = [5.38030E-08,0.001906942,6.82223E-05]*'1/bar'; #Vasconcelos2020
+	IPV4 = [6314.671300,3020.342254,2381.605255]*'K'; #Vasconcelos2020
+
+	# ----- Gorbach Isotherm
+
+	b00_kgperkg = 0.0118003*'kg/kg'; # [kg(Species)/kg(Solid)] Gorbach Parameter b0,0
+	b10 = 2.03629E-03 * 1E+03 *'1/bar';  # Gorbach Parameter b1,0 [1/bar]
+	b20 = 1.75732E-10 * 1E+06 *'1/bar^2';  # Gorbach Parameter b2,0 [1/bar?]
+	b30 = 2.24522E-03 * 1E+03 *'1/bar';  # Gorbach Parameter b3,0 [1/bar]
+	b40 = 1.22430E-11 * 1E+06 *'1/bar^2';  # Gorbach Parameter b4,0 [1/bar?]
+
+	b00 = b00_kgperkg / M(1);  # b0,0 [kmol(Species)/kg(Solid)] Gorbach Parameter b0,0
+
+	b0T = 5.0E-06; # Gorbach Parameter b0,T
+	b1T = 18.4468; # Gorbach Parameter b1,T
+	b2T = 41.3509; # Gorbach Parameter b2,T
+	b3T = 17.2808; # Gorbach Parameter b3,T
+	b4T = 41.1549; # Gorbach Parameter b4,T
+
+	Tref = 273.25*'K'; # Gorbach Reference Temperature
+
+	# ---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+	#########
+	VARIABLES
+	#########
+	
+	##### ----- CONNECTIONS -------- #####
+	
+	#in Inlet as stream (Brief = "Inlet Stream", PosX=0.5, PosY=0, Symbol="_{in}");
+	#out Outlet as stream (Brief = "Outlet Stream", PosX=0.5, PosY=1, Symbol="_{out}");
+
+	##### ----- DISCRETIZATION ----- #####
+	
+	# ----- Plug-in OCFEM -----
+	
+	FD as MDF;
+	
+	##### ----- MATERIAL BALANCE ----- #####
+
+	# ----- Initial Variables -----
+	
+	zini(NComp) as Real (Brief = "Initial Molar Fraction");
+	
+	# ----- Inlet Variables -----
+	
+	zi0(NComp) as Real (Brief = "Inlet Bulk Molar Fraction");
+	Fnormal as positive (Brief = "Inlet Gas Flow", Unit = 'l/min');
+	F0 as positive (Brief = "Inlet Gas Flow", Unit = 'l/min'); # (Brief = "Inlet Gas Flow", Unit = 'kmol/h');
+	m0 as flow_mass (Brief = "Inlet Mass Flow");
+	T0 as temperature (Brief = "Inlet Temperature");
+	P0 as positive (Brief = "Inlet Pressure", Unit = 'kPa');
+	
+	# ----- Geometry -----
+
+	L as length (Brief = "Sieve Length");
+	dB as length (Brief = "Bed Diameter");
+	
+	Rp as Real (Brief = "Particle Radius", Unit = 'm');
+	Rc as Real (Brief = "Crystal Radius", Unit = 'm');
+	rp as Real (Brief = "Average Pore Radius", Unit = 'm'); 
+	
+	tortuosity as Real (Brief = "Tortuosity");
+	Vatomic(NComp) as Real (Brief = "Special Atomic Diffusion Volume", Unit = 'm^3'); # Fuller1969
+
+	Across as area (Brief = "Cross Section Area");
+
+	# ----- Porosity -----
+
+	ep as positive (Brief = "Intraparticle Voidage");
+
+	alphab as positive (Brief = "3rd Term Bulk Mass Balance Constant");
+
+	# ----- Bulk Transport Properties -----
+
+	rhob as dens_mass (Brief = "Bulk Specific Gravity");
+	rhop as dens_mass (Brief = "Particle Specific Gravity");
+	rhoB as dens_mass (Brief = "Bed Specific Gravity");
+	mub as Real (Brief = "Bulk Viscosity", Default = 1e-3, Unit = 'kg/m/s');
+	mub_Air as Real (Brief = "Air Dynamic Viscosity", Default = 1e-3, Unit = 'kg/m/s');
+	Mwb as molweight (Brief = "Bulk Molecular Weight");
+	Mwb_Air as molweight (Brief = "Air Molecular Weight");
+	#nub as Real (Brief = "Bulk Kinematic Viscosity",Unit = '(m^2)/s',Default = 2e-6);
+	
+	# ----- Thermodynamics Properties -----	
+
+	Znormal as Real (Brief = "Normal Compressibility Factor");
+	
+	Zini as Real (Brief = "Initial Bulk Compressibility Factor");
+	Zi0 as Real (Brief = "Inlet Bulk Compressibility Factor");
+	
+	# ----- Flow -----	
+
+	#Fnormal as positive (Brief = "Normal Inlet Gas Flow", Unit = 'm^3/d'); # Normal Gas Conditions at 0 degree Celsius and 1 atm
+
+	# ----- Velocity -----
+	
+	Vb as velocity (Brief = "Bulk Velocity");
+	Vsup as velocity (Brief = "Superficial Bulk Velocity");
+	
+	# ----- Molecular Diffusivity -----
+
+	Dkj(NComp,NComp) as Real (Brief = "Binary Molecular Difusivity", Unit = 'm^2/s');
+	Dm(NComp) as Real (Brief = "Molecular Difusivity", Unit = 'm^2/s');
+
+	# ----- Material Balance Adimensional Numbers -----
+
+	Reb as Real (Brief = "Bulk Relnolds Number");
+	Scb(NComp) as Real (Brief = "Bulk Schmidt Number");
+	Dax(NComp) as Real (Brief = "Axial Difusivity", Unit = 'm^2/s');
+	Pem(NComp) as positive (Brief = "Mass Balance Peclet Number");
+	Shb(NComp) as Real (Brief = "Bulk Sherwood Number");
+	
+	# ----- Mass Transfer Resistence -----
+
+	kf(NComp) as Real (Brief = "External Film Mass Transfer Coefficient", Unit = 'm/s');
+	Dp(NComp) as Real (Brief = "Macropore Effective Diffusivity", Unit = 'm^2/s');
+	Dk(NComp) as Real (Brief = "Knudsen Diffusivity", Unit = 'm^2/s');
+	Dc(NComp) as Real (Brief = "Crystalline Difusivity", Unit = '(m^2)/s');
+	
+	# ----- Partial Pressure at Initial Condition -----
+
+	Cini(NComp) as Real (Brief = "Initial Bulk Concentration", Unit = 'kmol/m^3');
+	Ybini(NComp) as Real (Brief = "Initial Adimensional Bulk Concentration");
+	Ctini as Real (Brief = "Initial Total Bulk Concentration", Unit = 'kmol/m^3');
+	pini(NComp) as Real (Brief = "Initial Parcial Pressure", Unit = 'kPa');
+	
+	# ----- Partial Pressure at Inlet Position -----
+
+	Ci0(NComp) as Real (Brief = "Inlet Bulk Concentration", Unit = 'kmol/m^3');
+	Ybi0(NComp) as Real (Brief = "Inlet Adimensional Bulk Concentration");
+	Ct0 as Real (Brief = "Inlet Total Bulk Concentration", Unit = 'kmol/m^3');
+	pi0(NComp) as Real (Brief = "Inlet Parcial Pressure", Unit = 'kPa');
+
+	# ----- Isotherm -----
+
+	qini(NComp) as Real (Brief = "Initial Solid Concentration", Unit = 'kmol/kg');
+	qi0(NComp) as Real (Brief = "Inlet Solid Concentration", Unit = 'kmol/kg');
+
+	exp_b00 as Real (Brief = "Gorbach Exponential Parameter exp_b00");
+	exp_b01 as Real (Brief = "Gorbach Exponential Parameter exp_b01");
+	exp_b02 as Real (Brief = "Gorbach Exponential Parameter exp_b02");
+	exp_b03 as Real (Brief = "Gorbach Exponential Parameter exp_b03");
+	exp_b04 as Real (Brief = "Gorbach Exponential Parameter exp_b04");
+
+	IPG0 as Real (Brief = "Gorbach Isotherm Parameter IPG0", Unit = 'kmol/kg'); # Gorbach Parameter IPG0 [kmol(Species)/kg(Solid)]
+	IPG1 as Real (Brief = "Gorbach Isotherm Parameter IPG1", Unit = '1/bar');   # Gorbach Parameter IPG1 [1/bar]
+	IPG2 as Real (Brief = "Gorbach Isotherm Parameter IPG2", Unit = '1/bar^2'); # Gorbach Parameter IPG2 [1/bar^2]
+	IPG3 as Real (Brief = "Gorbach Isotherm Parameter IPG3", Unit = '1/bar');   # Gorbach Parameter IPG3 [1/bar]
+	IPG4 as Real (Brief = "Gorbach Isotherm Parameter IPG4", Unit = '1/bar^2'); # Gorbach Parameter IPG4 [1/bar^2]
+
+	# ----- Adimensional Isotherm Variables -----
+
+	uini(NComp) as Real (Brief = "Initial Adimensional Extended Dual Site Langmuir Isotherm");
+	ui0(NComp) as Real (Brief = "Inlet Adimensional Extended Dual Site Langmuir Isotherm");
+
+	Dmt(NComp) as positive (Brief = "Mass Transfer Parameter");
+	Dg(NComp) as positive (Brief = "3rd Term Adimensional Bulk Mass Balance Parameter");
+	
+	# ----- Some Isotherm Parameters -----
+
+	b(NComp,2) as Real (Brief = "Extended Dual Site Langmuir Isotherm Variable", Unit = '1/kPa');
+	qs(NComp,2) as Real  (Brief = "Extended Dual Site Langmuir Isotherm Variable", Unit = 'mol/kg');
+
+	# ----- Choosing the LDF Model -----
+
+	kldf(NComp) as Real (Brief = "Global Mass Transfer Coefficient", Unit = '1/s');
+	
+	# ----- Time -----
+
+	t as Real (Brief = "Time", Unit = 's');
+
+	# ----- Adimensional Global Mass Transfer Coefficient: Kldf -----
+
+	KLDF(NComp) as Real (Brief = "Adimensional Global Mass Transfer Coefficient");
+
+	##### ----- MOMENTUM BALANCE ----- #####
+
+	# ----- Momentum Balance Variables -----
+
+	#Pb as pressure (Brief = "Bulk Pressure");
+
+	# ----- Momentum Balance Adimensional Numbers -----
+
+	Lambdab as Real (Brief = "Adimensional Bulk Ergun Equation Parameter");
+
+	##### ----- ENERGY BALANCE ------- #####
+
+	# ----- Initial Condition (tau=0): Energy Balance -----
+	
+	Tbini as temperature (Brief = "Initial Bulk Temperature");
+	Tpini as temperature (Brief = "Initial Particle Temperature");
+
+	THETAbini as Real (Brief = "Initial Adimensional Bulk Temperature");
+	THETApini as Real (Brief = "Initial Adimensional Particle Temperature");
+	
+	# ----- Geometry -----
+	
+	ap as Real (Brief = "Specific Particle Surface per Bed Volume", Unit = '1/m');
+	
+	# ----- Bulk Energy Transport Properties -----
+
+	Cpb_mol as cp_mol (Brief = "Bulk Molar Heat Capacity"); #,Unit = 'J/mol/K',Default =46.6);
+	#Cpb_mol_ as cp_mol (Brief = "Bulk Molar Heat Capacity"); #,Unit = 'J/mol/K',Default =46.6);
+	Cpb as cp_mass (Brief = "Bulk Heat Capacity"); #,Unit = 'J/mol/K',Default =46.6);
+	Cpp as cp_mass (Brief = "Particle Heat Capacity"); #,Unit = 'J/mol/K',Default =46.6);
+	Kb as Real (Brief = "Bulk Thermal Conductivity", Unit = 'W/m/K');
+
+	Hads(NComp) as Real (Brief = "Isosteric Heat of Adsorption", Unit = 'kJ/mol');
+
+	# ----- Energy Balance Adimensional Numbers -----
+
+	Prb as Real (Brief = "Bulk Prandtl Number");
+	Kax as Real (Brief = "Effective Axial Bulk Thermal Conductivity", Unit = 'W/m/K');
+	Nub as Real (Brief = "Bulk Nusselt Number");
+	hfb as Real (Brief = "Convective Heat Transfer Coefficient", Unit = 'W/m^2/K');
+	#Kb__(NofS) as Real (Brief = "Bulk Thermal Conductivity", Unit = 'W/m/K');
+	
+	Phib as Real (Brief = "1st Term Adimensional Bulk Energy Balance Parameter");
+	Psib as Real (Brief = "3rd Term Adimensional Bulk Energy Balance Parameter");
+	Phis as Real (Brief = "1st Term Adimensional Solid Energy Balance Parameter");
+	Psip as Real (Brief = "2rd Term Adimensional Particle Energy Balance Parameter");
+
+	# ---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+	#########
+	#########
+	EQUATIONS
+	#########
+	#########
+	
+	########################################
+	##### ----- MATERIAL BALANCE ----- #####
+	########################################
+	
+	# ----- Geometry -----
+
+	"Cross Section Area"
+	Across = PInumber*(dB/2.0)^2.0;
+	
+	# ----- Porosity -----
+
+	"Total Bed Voidage"
+	ep = (epsilon - ei ) / ( 1.0 - ei );
+	"3rd Term Bulk Mass Balance Parameter"
+	alphab = (1-ei)/ei;
+	
+	# ----- Bulk Transport Properties -----
+	
+	#"Transport Properties"
+	rhob = PP.VapourDensity(T0,P0,zi0); # Bulk Specific Gravity
+	mub = PP.VapourViscosity(T0,P0,zi0); # Bulk Dynamic Viscosity
+	mub_Air = PP.VapourViscosity(T0,P0,zini); # Bulk Dynamic Viscosity
+	"Bulk Molecular Weight"
+	Mwb = sum(M*zi0);
+	"Air Molecular Weight"
+	Mwb_Air = sum(M*zini);
+	#"Kinematic Viscosity"
+	#nu = mu/rho;
+	#rhoB = (1-ei)*rhop;
+	rhop = rhoB/(1.0-ei);
+	
+	# ----- Thermodynamics Properties -----	
+
+	"Normal Compressibility Factor"
+	Znormal = PP.VapourCompressibilityFactor(Tnormal,Pnormal,zi0(:)); # 0.5201;
+
+	"Initial Bulk Compressibility Factor"
+	Zini = PP.VapourCompressibilityFactor(T0,P0,zini); #0.8968;
+
+	"Inlet Bulk Compressibility Factor"	
+	Zi0 = PP.VapourCompressibilityFactor(T0,P0,zi0); # 0.5201;
+
+	# ----- Flow -----
+	
+	#"Inlet Actual Flow"
+	F0 = Fnormal*(T0/Tnormal)*(Pnormal/P0)*(Zi0/Znormal);
+	m0 = F0*rhob;
+	
+	# ----- Velocity -----
+
+	"Superficial Velocity"
+	Vsup = m0/rhob/Across;
+	"Velocity"
+	#Vb = Vsup/ei;
+	Vb = Vsup;
+
+	# ----- Molecular Diffusivity -----
+	
+	for j in [1:NComp] do
+		for k in [1:NComp] do
+			
+			"Binary Molecular Diffusivity Calculation"
+			Dkj(k,j) = 1.0E-05*'m^2/s' * ((T0/'K')^1.75) * (sqrt(1.0/(M(k)/'g/mol')+1.0/(M(j)/'g/mol'))) / ( (0.986923*(P0/'kPa')) * ((Vatomic(k)/'m^3')^(1.0/3.0)+(Vatomic(j)/'m^3')^(1.0/3.0))^2.0 );
+			
+		end
+	end
+
+	#"Molecular Diffusivity Calculation"
+	#Dm = [(1-zi0(1))/(zi0(2)/Dkj(1,2)+zi0(3)/Dkj(1,3)), (1-zi0(2))/(zi0(1)/Dkj(2,1)+zi0(3)/Dkj(2,3)), (1-zi0(3))/(zi0(1)/Dkj(3,1)+zi0(2)/Dkj(3,2))];
+
+	for c in [1:NComp] do
+		
+		"Molecular Diffusivity Calculation"
+		Dm(c) = (1.0-zi0(c))/(sum(zi0/Dkj(c,:)) - zi0(c)/Dkj(c,c));
+
+	end
+
+
+	# ----- Material Balance Adimensional Numbers -----
+	
+	"Reynolds Number"
+	Reb = 2*Rp*rhob*Vsup/mub;
+
+	for c in [1:NComp] do
+		
+		"Schmidt Number"
+		Scb(c) = mub/(rhob*Dm(c));
+		"Axial Diffusivity"
+		Dax(c) = (Dm(c)/ei)*(20.0+0.5*Scb(c)*Reb);
+		"Bulk Peclet Number"
+		Pem(c) = Vb*L/Dax(c);
+		"Bulk Sherwood Number"
+		#Shb(c) = 2.0+1.1*Reb^(0.6)*(Scb(c))^(1/3);	
+		Shb(c) = 2.0+1.1*(Reb*Reb)^(0.3)*(Scb(c)*Scb(c))^(1.0/6.0);
+	end
+
+	# ----- Mass Transfer Resistence -----
+	
+	for c in [1:NComp] do
+		
+		"External Film Mass Transfer Coefficient"
+		kf(c) = (Dm(c)/(2.0*Rp))*Shb(c); 	
+		"Knudsen Diffusivity"
+		Dk(c) = 97.0*'m^2/s'*(rp/'m')*sqrt((T0/'K')/(M(c)/'kg/kmol'));
+		"Macropore Effective Diffusivity"
+		Dp(c) = 1.0/(tortuosity*((1.0/Dk(c))+(1.0/Dm(c)))); # Validado
+		"Crystalline Diffusity"
+		Dc(c) = D0(c)*exp(-Energy(c)/(R*T0));
+		
+	end
+
+	# ----- Partial Pressure at Initial Condition -----
+
+	for c in [1:NComp] do
+		
+		"Concentration at tau=0"
+		Cini(c) = (zini(c)*P0)/(Zini*R*T0);
+		"Initial Bulk Adimensional Concentration"
+		Ybini(c) = Cini(c)/Ci0(c);
+		
+	end
+	
+	"Initial Bulk Total Concentration"
+	Ctini = sum(Cini(:)); #Cini(1)+Cini(2)+Cini(3)+Cini(4);
+	
+	for c in [1:NComp] do
+		
+		"Initial Bulk Partial Pressure"
+		pini(c) = Ci0(c)*Ybini(c)*P0/Ctini;
+		
+	end
+	
+	# ----- Partial Pressure at Inlet Position -----
+	
+	for c in [1:NComp] do
+		
+		"Inlet Bulk Concentration"
+		Ci0(c) = (zi0(c)*P0)/(Zi0*R*T0);
+		"Inlet Bulk Adimensional Concentration"
+		Ybi0(c) = Ci0(c)/Ci0(c);
+		
+	end
+	
+	"Inlet Bulk Total Concentration"
+	Ct0 = sum(Ci0(:));
+	
+	for c in [1:NComp] do
+		
+		"Inlet Bulk Partial Pressure"
+		pi0(c) = Ci0(c)*Ybi0(c)*P0/Ct0;
+		
+	end
+	
+	# ----- Total Bulk Concentration Calculation -----
+	
+	for i in [1:nd] do
+			
+		"Total Bulk Concentration"
+		FD.Cbt(i) = sum(Ci0*FD.Yb(i,:));
+			
+	end # Total Bulk Concentration Loop
+	
+	# ----- Bulk Concentration and Molar Fraction Calculation -----
+	
+	for c in [1:NComp] do
+		for i in [1:nd] do
+				
+			if FD.Cbt(i) > 0.0*'kmol/m^3' then
+				
+				"Bulk Partial Pressure Calculation (if Cbt>0)"
+				FD.zbi(i,c) = FD.Cb(i,c)/FD.Cbt(i);
+				
+			else
+				
+				"Bulk Partial Pressure Calculation (if Cbt<=0)"
+				FD.zbi(i,c) = 0.0;
+				
+			end	
+			
+		end
+	end
+	
+	for c in [1:NComp] do
+		for i in [1:nd] do
+			
+			"Bulk Concentration Profile Calculation"
+			FD.Cb(i,c) = Ci0(c) * FD.Yb(i,c);
+			"Bulk Molar Fraction Profile Calculation"
+			FD.zb(i,c) = FD.Cb(i,c) * Zi0 * R * T0*FD.THETAp(i) / P0*FD.PIb(i); # Fracao molar 
+			#OCFEM.zb(p,e,c) = OCFEM.Cb(p,e,c) * Zi0 * R * T0 / P0; # Fracao molar com T e P constantes
+			
+		end
+	end
+	
+	# ----- Adsorbed Concentration and Equilibrium Adsorbed Concentration Calculation -----
+		
+	for c in [1:NComp] do
+		for i in [1:nd] do
+			
+			"Particle Concentration Profile Calculation"
+			FD.qb(i,c) = (Ci0(c)/rhoB) * FD.ub(i,c);
+			"Equilibrium Adsorbed Phase Concentration Profile Calculation"
+			FD.qb_eq(i,c) = (Ci0(c)/rhoB) * FD.ub_eq(i,c);
+			
+		end
+	end
+
+	# ----- Partial Pressure Calculations -----
+
+	for c in [1:NComp] do
+		for i in [1:nd] do
+				
+			if FD.Cbt(i) > 0.0*'kmol/m^3' then
+				
+				"Bulk Partial Pressure Calculation (if Cbt>0)"
+				FD.pi(i,c) = Ci0(c)*FD.Yb(i,c)*P0/FD.Cbt(i);
+				
+			else
+				
+				"Bulk Partial Pressure Calculation (if Cbt<=0)"
+				FD.pi(i,c) = 0.0*'kPa';
+				
+			end
+			
+		end
+	end
+
+	##### ----- Isotherm ---------------------------------------------------------------------------------------------------------------------------------------------------------------- #####
+	###########################################################################################################################################################################################
+	
+	switch Isotherm
+
+		case "Gorbach":
+		
+		"Initial Adimensional Extended Dual Site Langmuir Isotherm (Gholami2010b)"
+		qini(1) = Aging*( IPG0 * ( IPG1*pini(1) + IPG2*pini(1)*pini(1) ) / ( 1 + IPG3*pini(1) + IPG4*pini(1)*pini(1) ) );
+		qini(2) = 0*'kmol/kg';
+		qini(3) = 0*'kmol/kg';
+
+		qi0(1) = Aging*(IPG0 * ( IPG1*pi0(1) + IPG2*pi0(1)*pi0(1) ) / ( 1 + IPG3*pi0(1) + IPG4*pi0(1)*pi0(1) ) );
+		qi0(2) = 0*'kmol/kg';
+		qi0(3) = 0*'kmol/kg';		
+
+		for i in [1:nd] do
+				
+			"Extended Dual Site Langmuir Isotherm (Gholami2010b)"
+			FD.ub_eq(i,1) = Aging*( (rhoB/Ci0(1)) * IPG0 * ( IPG1*FD.pi(i,1) + IPG2*FD.pi(i,1)*FD.pi(i,1) ) / ( 1 + IPG3*FD.pi(i,1) + IPG4*FD.pi(i,1)*FD.pi(i,1) ) );
+			FD.ub_eq(i,2) =  0;
+			FD.ub_eq(i,3) =  0;
+				
+		end # Gorbach Loop
+		
+		case "ExtDualSiteLang":
+		
+		for c in [1:NComp] do
+			
+			"Initial Adimensional Extended Dual Site Langmuir Isotherm (Gholami2010b)"
+			qini(c) = Aging*( qs(c,1)*((b(c,1)*pini(c))/(1.0+sum(b(:,1)*pini(:))))+qs(c,2)*((b(c,2)*pini(c))/(1.0+sum(b(:,2)*pini(:)))) );
+			qi0(c) = Aging*( qs(c,1)*((b(c,1)*pi0(c))/(1.0+sum(b(:,1)*pi0(:))))+qs(c,2)*((b(c,2)*pi0(c))/(1.0+sum(b(:,2)*pi0(:)))) );
+			
+		end
+		
+		for c in [1:NComp] do
+			for i in [1:nd] do
+					
+				"Extended Dual Site Langmuir Isotherm (Gholami2010b)"
+				FD.ub_eq(i,c) = Aging*( (rhoB/Ci0(c))*( qs(c,1)*(b(c,1)*FD.pi(i,c))/(1.0+sum(b(:,1)*FD.pi(i,:))) 
+													+ qs(c,2)*(b(c,2)*FD.pi(i,c))/(1.0+sum(b(:,2)*FD.pi(i,:))) ) );
+				
+			end
+		end # Lang3 Loop
+		
+		
+		case "DualSiteLang": # Cavalcante2023
+		
+		for c in [1:NComp] do
+			
+			"Initial Adimensional Extended Dual Site Langmuir Isotherm"
+			qini(c) = Aging*( IPC1(c)*(exp(IPC2(c)/T0)*pini(c))/(1.0+sum(IPC3(:)*exp(IPC4(:)/T0)*pini(:))) + IPC5(c)*(exp(IPC6(c)/T0)*pini(c))/(1.0+sum(IPC7(:)*exp(IPC8(:)/T0)*pini(:))) );
+			#qini(c) = IPC1(c)*(exp(IPC2(c)/T0(CASE))*pini(c))/(1+IPC3(c)*exp(IPC4(c)/T0(CASE))*pini(c)) + IPC5(c)*(exp(IPC6(c)/T0(CASE))*pini(c))/(1+IPC7(c)*exp(IPC8(c)/T0(CASE))*pini(c));
+			qi0(c)  = Aging*( IPC1(c)*(exp(IPC2(c)/T0)* pi0(c) )/(1.0+   IPC3(c)*exp(IPC4(c)/T0)* pi0(c))  + IPC5(c)*(exp(IPC6(c)/T0)* pi0(c))/(1.0+    IPC7(c)*exp(IPC8(c)/T0)* pi0(c) ) );
+			
+		end
+		
+		for c in [1:NComp] do
+			for i in [1:nd] do
+					
+				"Extended Dual Site Langmuir Isotherm (Cavalcante2023)"
+				FD.ub_eq(i,c) = Aging*( (rhoB/Ci0(c)) * ( IPC1(c)*exp(IPC2(c)/(T0*FD.THETAp(i)))*FD.pi(i,c)/(1.0+sum(IPC3(:)*exp(IPC4(:)/(T0*FD.THETAp(i)))*FD.pi(i,:))) 
+														+ IPC5(c)*exp(IPC6(c)/(T0*FD.THETAp(i)))*FD.pi(i,c)/(1.0+sum(IPC7(:)*exp(IPC8(:)/(T0*FD.THETAp(i)))*FD.pi(i,:))) ) );
+					
+			end
+		end # Lang3 Loop
+		
+		
+		case "Lang3": # Vasconcelos2020
+		
+		for c in [1:NComp] do
+			
+			"Initial Adimensional Extended Dual Site Langmuir Isotherm"
+			qini(c) = Aging*( (IPV1(c)-IPV2(c)*T0)*( (IPV3(c)*exp(IPV4(c)/T0)*pini(c))/(1.0+IPV3(c)*exp(IPV4(c)/T0)*pini(c)) ) );
+			qi0(c)  = Aging*( (IPV1(c)-IPV2(c)*T0)*( (IPV3(c)*exp(IPV4(c)/T0)*pi0(c) )/(1.0+IPV3(c)*exp(IPV4(c)/T0)*pi0(c) ) ) );
+			
+		end
+
+		for c in [1:NComp] do
+			for i in [1:nd] do
+				
+				"Langmuir 3 Isotherm (Vasconcelos2020)"
+				FD.ub_eq(i,c) = Aging*( (rhoB/Ci0(c)) * (IPV1(c)-IPV2(c)*T0)*( (IPV3(c)*exp(IPV4(c)/T0)*FD.pi(i,c))/(1.0+IPV3(c)*exp(IPV4(c)/T0)*FD.pi(i,c)) ) );
+				
+			end			
+		end # ExtDualSiteLang Loop
+		
+	end # Switch Isotherm
+	
+	###########################################################################################################################################################################################
+
+	# ----- Adimensional Isotherm Variables -----
+
+	for c in [1:NComp] do
+		
+		uini(c) = (rhoB/Ci0(c)) * qini(c);
+		ui0(c)  = (rhoB/Ci0(c)) * qi0(c);
+		
+		Dmt(c)  = (rhop/Ci0(c))*qi0(c);
+		Dg(c)  = (rhoB/Ci0(c))*qi0(c);
+		
+	end
+
+	# ----- Gholami (2010b) Isotherm Parameters -----
+
+	for c in [1:NComp] do
+		
+		"Extended Dual Site Langmuir Isotherm Variables"
+		b(c,1) = b0(c,1)*exp(E(c,1)/(R*T0));
+		b(c,2) = b0(c,2)*exp(E(c,2)/(R*T0));	
+		qs(c,1) = A1(c,1)/T0 + A2(c,1);
+		qs(c,2) = A1(c,2)/T0 + A2(c,2);
+	
+	end
+
+	# ----- Gorbach (2004) Isotherm Parameters -----
+
+	exp_b00 = exp( b0T * ( 1 - ( T0 / Tref ) ) );
+	exp_b01 = exp( ( b1T * ( Tref / T0 ) ) - 1 );
+	exp_b02 = exp( ( b2T * ( Tref / T0 ) ) - 1 );
+	exp_b03 = exp( ( b3T * ( Tref / T0 ) ) - 1 );
+	exp_b04 = exp( ( b4T * ( Tref / T0 ) ) - 1 );
+
+	IPG0 = b00 * exp_b00;  # Gorbach Parameter IPG0 [kmol(Species)/kg(Solid)]
+	IPG1 = b10 * exp_b01;  # Gorbach Parameter IPG1 [1/bar]
+	IPG2 = b20 * exp_b02;  # Gorbach Parameter IPG2 [1/bar?]
+	IPG3 = b30 * exp_b03;  # Gorbach Parameter IPG3 [1/bar]
+	IPG4 = b40 * exp_b04;  # Gorbach Parameter IPG4 [1/bar?]
+
+	
+	##### ----- Bulk Material Balance ----------------------------------------------------------------------------------------------- #####
+	#######################################################################################################################################
+
+	for c in [1:NComp] do  
+		for i in [1:nd] do
+		
+			"Adimensional Bulk Mass Balance"
+			#diff(OCFEM.Yb(p,e,c))*'s' =  (1/Pem(c))*OCFEM.dif2xYb(p,e,c) - OCFEM.dif1xYb(p,e,c) - alphab*diff(OCFEM.ub(p,e,c))*'s';
+			##diff(OCFEM.Yb(p,e,c)) =  (1.0/Pem(c))*OCFEM.dif2xYb(p,e,c)*(1.0/t) - OCFEM.dif1xYb(p,e,c)*(1.0/t) - alphab*diff(OCFEM.ub(p,e,c));
+			epsilon*diff(FD.Yb(i,c)) =  ei*(1.0/Pem(c))*FD.dif2xYb(i,c)*(1.0/t) - FD.dif1xYb(i,c)*(1.0/t) - diff(FD.ub(i,c));
+			
+		end
+	end
+	
+	#######################################################################################################################################
+
+	# ----- Mass Balance Boundary Conditions -----
+	
+	for c in [1:NComp] do  
+
+		"Boundary Condition at x=0 (Adimensional Bulk Mass Balance)"
+		#OCFEM.Yb(1,1,c) = 1.0; # (Z=0)
+		ei*(1.0/Pem(c))*FD.dif1xYb(1,c) = FD.Yb(1,c) - 1.0; #(1/PeM)*ddYb/dx = Yb(x=0+)-1 
+		#(1.0/Pem(c))*OCFEM.dif1xYb(1,1,c) = OCFEM.Yb(1,1,c) - 1.0; #(1/PeM)*ddYb/dx = Yb(x=0+)-1 
+		"Boundary Condition at x=1 (Adimensional Bulk Mass Balance)"
+		FD.dif1xYb(nd,c) = 0.0; # (Z=L)
+		
+	end
+
+	# ----- Choosing the LDF Model -----
+
+	switch LDF_Model
+		
+		case "Fitting_kldf":
+			
+			"Fitting Global Mass Transfer Coefficient" 
+			kldf = defined_kldf;
+		
+		case "LDF_Micro":
+			
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+							
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 15.0*Dc(c)/(Rc^2.0); # Gholami2010b
+					
+				end
+				
+			end
+			
+		case "LDF_Macro":
+			
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+					
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 1.0/(Dmt(c)*(Rp^2.0/(15.0*ep*Dp(c))));
+					
+				end
+				
+			end
+			
+		case "LDF_ExtFilm":
+			
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+					
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 1.0/(Dmt(c)*(Rp/(3.0*kf(c))));
+					
+				end
+				
+			end
+			
+		case "LDF_Micro_Macro":
+			
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+					
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 15.0*Dc(c)/(Rc^2) + 1.0/(Dmt(c)*(Rp^2.0/(15.0*ep*Dp(c))));
+					
+				end
+				
+			end
+			
+		case "LDF_Micro_ExtFilm":
+			
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+					
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 15.0*Dc(c)/(Rc^2) + 1.0/(Dmt(c)*(Rp/(3.0*kf(c))));
+					
+				end
+				
+			end
+			
+		case "LDF_Macro_ExtFilm":
+			
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+					
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 1.0/(Dmt(c)*(Rp^2.0/(15.0*ep*Dp(c)) + Rp/(3.0*kf(c)))); # Cavalcante2023
+					
+				end
+				
+			end
+			
+		case "LDF_Micro_Macro_ExtFilm":
+				
+			for c in [1:NComp] do
+				
+				if Dmt(c) < 0.0000000000001 then
+					
+					kldf(c) = 0.0*'1/s';
+					
+				else	
+					
+					"Global Mass Transfer Coefficient" 
+					kldf(c) = 15.0*Dc(c)/(Rc^2.0) + 1.0/(Dmt(c)*(Rp^2.0/(15.0*ep*Dp(c)) + Rp/(3.0*kf(c)))); # Braun2018
+					
+				end
+				
+			end
+		
+	end # Switch LDF_Model
+
+	# ----- Time -----
+
+	t = (L/Vb);
+
+	# ----- Adimensional Global Mass Transfer Coefficient: Kldf -----
+
+	for c in [1:NComp] do	
+		
+		"Adimensional Global Mass Transfer Coefficient" 
+		KLDF(c) = kldf(c)*t;
+		
+	end
+	
+	
+	##### ----- Solid Material Balance ------------------------------------------------ #####
+	#########################################################################################
+
+	for c in [1:NComp] do
+		for i in [1:nd] do
+			
+			"Linear Driving Force (LDF)"
+			#diff(OCFEM.ub(p,e,c))*'s' = KLDF(c) * (OCFEM.ub_eq(p,e,c)-OCFEM.ub(p,e,c));
+			diff(FD.ub(i,c)) = KLDF(c)*(1.0/t) * (FD.ub_eq(i,c)-FD.ub(i,c));
+			#diff(OCFEM.ub(p,e,c)) = Theta * (T0/'K')^0.75 * zi0(c)  * ( 1.0 - ( OCFEM.ub(p,e,c)+Zero )/( OCFEM.ub_eq(p,e,c)+Zero ));
+			#diff(OCFEM.ub(p,e,c)) = Theta * (OCFEM.Tb(p,e,c)/'K')^0.75 * OCFEM.zb(p,e,c)  * ( 1.0 - ( OCFEM.ub(p,e,c)+Zero )/( OCFEM.ub_eq(p,e,c)+Zero ));
+			
+		end
+	end  # LDF Loop
+	
+	#########################################################################################
+	
+
+	#----- Dimensionalizing some Material Dependent Variables
+
+	"Bulk Molar Fraction Profile Calculation"
+	FD.zi = FD.Cb * Zi0 * R * T0 / P0; # * 1E+02; Fracao molar em %
+	
+	
+	########################################
+	##### ----- MOMENTUM BALANCE ----- #####
+	
+	# ----- Momentum Balance Variables -----
+	
+	#Pb = P0;
+
+	# ----- Momentum Balance Adimensional Numbers -----
+
+	"Adimensional Parameter of Bulk Ergun Equation"
+	Lambdab = (2.0*Rp)*P0/rhob/(Vsup^2.0)/L;
+
+
+	##### ----- Momentum Balance Ordinary Equation -----
+	####################################################
+
+	for i in [1:nd-1] do
+		
+		"Adimensional Bulk Momentum Balance"
+		Lambdab*FD.dif1xPIb(i) = -150.0*((1.0-ei)^2.0)/(ei^3.0)/Reb - 1.75*(1.0-ei)/ei^3.0;
+		
+	end
+	
+	####################################################
+
+	# ----- Momentum Boundary Conditions
+	
+	#"Boundary Condition at x=0 (Adimensional Bulk Momentum Balance)"
+	# OCFEM.PIb(1,1) = 1.0; # (Z=0)
+	"Boundary Condition at x=1 (Adimensional Bulk Momentum Balance)"
+	FD.PIb(nd) = 1.0; 
+
+	# ----- Dimensionalizing some Momentum Dependent Variables
+
+	#"Bulk Pressure Profile Calculation"
+	#OCFEM.Pb = (P0 * OCFEM.PIb); # Esta na verdade em Celsius
+	
+	# ----- Pressure Profile Calculation -----
+	
+	for i in [1:nd] do
+		
+		"Bulk Pressure Profile Calculation"
+		FD.Pb(i) = P0 * FD.PIb(i);
+		
+	end
+
+	
+	######################################
+	##### ----- ENERGY BALANCE ----- #####
+	######################################
+
+	# ----- Initial Condition (tau=0): Energy Balance -----
+	
+	Tpini = Tbini;
+	THETAbini = Tbini/T0;
+	THETApini = Tpini/T0;
+	
+	# ----- Geometry -----
+
+	"Specific Particle Surface per Bed Volume"	
+	ap = 3.0/Rp; #1807.23*'1/m'; # VASCONCELOS2020 # RUTHVEN1984 (pg. 217)
+	
+	# ----- Bulk Energy Transport Properties -----
+	
+	#"Bulk Thermal Conductivity"
+	Kb = PP.VapourThermalConductivity(T0,P0,zi0);
+	#"Bulk Molar Specific Heat"
+	Cpb_mol = PP.VapourCp(T0,P0,zi0);
+	"Bulk Mass Specific Heat"
+	Cpb = Cpb_mol/Mwb;
+
+	# ----- Energy Balance Adimensional Numbers -----
+
+	"Prandtl Number"
+	Prb = mub*Cpb/Kb;
+	"Effective Axial Bulk Thermal Conductivity"
+	Kax = Kb*(7.0+0.5*Prb*Reb); # Proximo: 73,22648 W/(m.K) contra 5,53*10^-5MW/(m.K) de Cavalcante2023
+	"Bulk Nusselt Number"
+	Nub = 2.0+1.1*(Reb*Reb)^(0.3)*(Prb*Prb)^(1.0/6.0);
+	#Nub = 2+1.1*Reb^(0.6)*Prb^(1/3); # Validado
+	"Convective Heat Transfer Coefficient"
+	hfb = (Kb/(2*Rp))*Nub; # Validado
+	
+	"1st Term Adimensional Parameter of Bulk Energy Balance"
+	Phib = Kax/Vb/L/rhob/Cpb;
+	"3rd Term Adimensional Parameter of Bulk Energy Balance"
+	Psib = hfb*ap*L/rhob/Cpb/Vb;
+	"1rd Term Adimensional Parameter of Particle Energy Balance"
+	Phis = hfb*ap*L/rhop/Cpp/Vb;
+	"3rd Term Adimensional Parameter of Bulk Energy Balance"
+	Psip = 1.0/T0/rhop/Cpp*sum(Ci0(:)*Hads(:));
+	
+	
+	##### ----- Bulk Energy Balance Partial Equation ----------------------------------------------------------------------------------------------- #####	
+	######################################################################################################################################################
+	
+#	for e in [1:FD.ne] do
+#		for p in [2:FD.np-1] do
+	for i in [1:nd] do
+
+		"Adimensional Bulk Energy Balance"
+		epsilon*diff(FD.THETAb(i)) = ei*Phib*FD.dif2xTHETAb(i)*(1/t) - FD.dif1xTHETAb(i)*(1/t) - Psib*(FD.THETAb(i)-FD.THETAp(i))*(1/t);
+		#diff(OCFEM.THETAb(p,e))*'s' = Phib*OCFEM.dif2xTHETAb(p,e) - OCFEM.dif1xTHETAb(p,e) - Psib*(OCFEM.THETAb(p,e)-OCFEM.THETAp(p,e));
+		
+	end
+	
+	######################################################################################################################################################
+	
+	
+	# ----- Solid Energy Balance Partial Equation -------------------------------------------------------------------- #####	
+	########################################################################################################################
+
+	for i in [1:nd] do
+		# vai de 1 a np
+		
+		"Adimensional Solid Energy Balance"
+		diff(FD.THETAp(i)) = Phis*(FD.THETAb(i)-FD.THETAp(i))*(1.0/t) - Psip*sum(diff(FD.ub(i,:)));
+		#diff(OCFEM.THETAp(p,e))*'s' = Phis*(OCFEM.THETAb(p,e)-OCFEM.THETAp(p,e)) - Psip*sum(diff(OCFEM.ub(p,e,:))*'s');
+		# Antes do Psip ficou "positivo" porque considerei o deltaHads como "positivo".
+		
+	end
+	
+	########################################################################################################################
+
+	# ----- Energy Balance Boundary Conditions -----	
+
+	"Boundary Condition at x=0 (Adimensional Bulk Energy Balance)"
+	ei*Phib*FD.dif1xTHETAb(1,1) = FD.THETAb(1,1) - 1.0; #Phib*THETAb/dx = THETAb(x=0+)-1 
+	"Boundary Condition at x=1 (Adimensional Bulk Energy Balance)"
+	#FD.dif1xTHETAb(FD.np,FD.ne) = 0.0; # (Z=L)
+	FD.dif1xTHETAb(nd) = 0.0; # (Z=L)
+	
+	# ----- Dimensionalizing some Energy Dependent Variables
+
+	#"Bulk Temperature Profile Calculation"
+	#OCFEM.Tb = (T0 * OCFEM.THETAb)-273.15*'K'; # Esta na verdade em Celsius
+	#"Particle Temperature Profile Calculation"
+	#OCFEM.Tp = (T0 * OCFEM.THETAp)-273.15*'K'; # Esta na verdade em Celsius
+	
+	
+	# ----- Temperature Profile Calculation -----
+	
+	for i in [1:nd] do
+		
+		"Bulk Temperature Profile Calculation"
+		FD.Tb(i) = T0 * FD.THETAb(i);
+		FD.Tb_C(i) = FD.Tb(i) - 273.15*'K';
+		"Particle Temperature Profile Calculation"
+		FD.Tp(i) = T0 * FD.THETAp(i);
+		FD.Tp_C(i) = FD.Tp(i) - 273.15*'K';
+		
+	end
+	
+
+end

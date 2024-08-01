@@ -1,103 +1,126 @@
 using "types";
 
 Model MDF
-	
+
 	PARAMETERS
+
+	N as Integer (Brief = "Number of Nodal Points + 1");
+
+	xi as Real (Brief = "Initial Value");
+	xf as Real (Brief = "Final Value");
 	
-	#Informa o esquema a ser utilizado
-	#opcao as Switcher (Valid=["MDF1", "MDF2", "MDF2b"],Default="MDF1");
-	
-	#Numero de pontos de discretização+1
-	N as Integer;
-	#Valor inicial
-	xi as Real;
-	#Valor Final
-	xf as Real;
+	outer NComp as Integer (Brief = "Number of Components");
 
 	VARIABLES
 	
-	#Geracao da Malha
-	#Vetor que ira armazenar os valores da malha discretizada
-	x(N+1) as Real;
-	#Incremento da malha
-	dx as Real;
+	# Geracao da Malha
+	# Vetor que ira armazenar os valores da malha discretizada
+	x(N+1) as Real (Brief = "Discretized Values");
+	# Incremento da malha
+	dx as Real  (Brief = "Increment");
 	
-	#Aproximacoes
-	#Variavel dependente
-	y(N+1) as Real;
-	#Aproximação para 1 derivada 
-	dif1y(N+1) as Real;
-	#Aproximação para 2 derivada 
-	dif2y(N+1) as Real; 
+	# Balanco de Massa: Variavel dependente
+	Yb(N+1,NComp) as Real (Brief = "Adimensional Bulk Concentration: Dependent Variable of Bulk Mass Balance Equation");
+	# Balanco de Energia: Variavel dependente
+	THETAb(N+1) as Real (Brief = "Adimensional Bulk Temperature: Dependent Variable of Bulk Energy Balance Equation");
+	THETAp(N+1) as Real (Brief = "Adimensional Particle Temperature: Dependent Variable of Particle Energy Balance Equation");
+	# Balanco de Momentum: Variavel Dependente
+	PIb(N+1) as Real (Brief = "Adimensional Bulk Pressure: Dependent Variable of Ergun Equation");
+	# Demais Variaveis "Dependentes" desdobradas a partir de Yb
+	pi(N+1,NComp) as Real (Brief = "Bulk Partial Pressure", Unit = 'kPa'); 
+	ub(N+1,NComp) as Real (Brief = "Adimensional Average Particle Concentration"); 
+	# uc(np,ne,NComp) as Real (Brief = "Adimensional Average Crystal Concentration"); 
+	ub_eq(N+1,NComp) as Real (Brief = "Adimensional Equilibriun Particle Concentration");
+	Cbt(N+1) as Real (Brief = "Total Bulk Concentration", Unit = 'mol/(m^3)');
 	
+	Cb(N+1,NComp) as Real (Brief = "Bulk Concentration: Dependent Variable of Bulk Mass Balance Equation", Unit = 'kmol/m^3');
+	qb(N+1,NComp) as Real (Brief = "Average Particle Concentration", Unit = 'kmol/kg');
+	qb_eq(N+1,NComp) as Real (Brief = "Equilibrium Average Particle Concentration", Unit = 'kmol/kg');
+	zb(N+1,NComp) as Real (Brief = "Molar Fraction");
+	zbi(N+1,NComp) as Real (Brief = "Molar Fraction");
+	zi(N+1,NComp) as Real (Brief = "Molar Fraction");
+
+	Tb(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Bulk Energy Balance Equation", Unit = 'K');
+	Tp(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Particle Energy Balance Equation", Unit = 'K');
+	Tb_C(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Bulk Energy Balance Equation", Unit = 'K');
+	Tp_C(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Particle Energy Balance Equation", Unit = 'K');
+	
+	Pb(N+1) as Real (Brief = "Bulk Pressure", Unit = 'kPa');
+
+	# Balanco de Massa: Discretizacao das Derivadas
+	dif1xYb(N+1,NComp) as Real(Brief = "First Derivative Function of Adimensional Bulk Concentration");
+	# dif1x(np,ne) as Real (Brief="primeira derivada da func");
+	dif2xYb(N+1,NComp) as Real(Brief = "Second Derivative Function of Adimensional Bulk Concentration");
+	# dif2x(np,ne) as Real (Brief="segunda derivada da func");
+
+	# Balanco de Momentum: Discretizacao das Derivadas
+	dif1xPIb(N+1) as Real (Brief = "First Derivative Function of Adimensional Ergun Equation");
+
+	# Balanco de Energia: Discretizacao das Derivadas
+	dif1xTHETAb(N+1) as Real (Brief = "First Derivative Function of Adimensional Ergun Equation");
+	dif2xTHETAb(N+1) as Real (Brief = "Second Derivative Function of Adimensional Energy Balance");
+
 	EQUATIONS
 	
-	#Calculo do incremento da malha
+	# Calculo do incremento da malha
 	dx=(xf-xi)/N; 
 
-	#Geração da malha de integração
+	# Geração da malha de integração
 	for i in [1:N+1] do
 		
 		x(i) = xi + (i-1)*dx;
-	
+		
 	end
 
-	#switch opcao
+	# Aproximacao para 1 derivada no contorno x=x0
+	dif1xTHETAb(1)=(THETAb(2) - THETAb(1))/dx;
+	dif1xPIb(1)=(PIb(2) - PIb(1))/dx;
 	
-	#	case "MDF1":
-	#Aproximacao para 1 derivada no contorno x=x0
-	dif1y(1)=(y(2) - y(1))/dx;
-	
-	#Aproximacao para 1 derivada no contorno x=xf
-	dif1y(N+1)=(y(N+1) - y(N))/dx;
-	
-	#Aproximacao para 1 derivada 
-	for i in [2:N] do
-		dif1y(i)=(y(i+1) - y(i-1))/(2*dx);
-	end
-	
-	#Aproximacao para 2 derivadas 
-	for i in [2:N] do
-		dif2y(i)=(y(i+1) - 2*y(i) + y(i-1))/dx^2;
-	end
+	for c in [1:NComp] do 
 		
-	#	case "MDF2":
+		dif1xYb(1,c)=(Yb(2,c) - Yb(1,c))/dx;
 		
-			#Aproximacao para 1 derivada no contorno x=x0
-	#		dif1x(1)=(-3*y(1)/2 + 2*y(2) - y(3)/2)/dx;
+	end 
 	
-			#Aproximacao para 1 derivada no contorno x=xf
-	#		dif1x(N+1)=(3*y(N+1)/2 - 2*y(N) + y(N-1)/2)/dx;
-	
-			#Aproximacao para 1 derivada 
-	#		for i in [2:N] do
-	#			dif1x(i)=(y(i+1) - y(i-1))/(2*dx);
-	#		end
-	
-			#Aproximacao para 2 derivada 
-	#		for i in [2:N] do
-	#			dif2x(i)=(y(i+1) - 2*y(i) + y(i-1))/dx^2;
-	#		end
-			
 
-	#	case "MDF2b":
+	# Aproximacao para 1 derivada no contorno x=xf
+	dif1xTHETAb(N+1)=(THETAb(N+1) - THETAb(N))/dx;
+	dif1xPIb(N+1)=(PIb(N+1) - PIb(N))/dx;
+
+	for c in [1:NComp] do 
 		
-			#Aproximacao para 1 derivada no contorno x=x0
-	#		dif1x(1)=(-y(1) + y(2)/2 + y(3) - y(4)/2)/dx;
+		dif1xYb(N+1,c)=(Yb(N+1,c) - Yb(N,c))/dx;
+		
+	end
 	
-			#Aproximacao para 1 derivada no contorno x=xf
-	#		dif1x(N+1)=(y(N+1) - y(N)/2 - y(N-1) + y(N-2)/2)/dx;
+
+	# Aproximacao para a derivada de 1a ordem
+	for i in [2:N] do
+		
+		dif1xTHETAb(i)=(THETAb(i+1) - THETAb(i-1))/(2*dx);
+		dif1xPIb(i)=(PIb(i+1) - PIb(i-1))/(2*dx);
+		
+	end	
 	
-			#Aproximacao para 1 derivada 
-	#		for i in [2:N] do
-	#			dif1x(i)=(y(i+1) - y(i-1))/(2*dx);
-	#		end
+	for c in [1:NComp] do 
+		
+		for i in [2:N] do
+			dif1xYb(i,c)=(Yb(i+1,c) - Yb(i-1,c))/(2*dx);
+		end		
+		
+	end 
+
 	
-			#Aproximacao para 2 derivada 
-	#		for i in [2:N] do
-	#			dif2x(i)=(y(i+1) - 2*y(i) + y(i-1))/dx^2;
-	#		end
-			
-	#end		
+	# Aproximacao para a derivada de 2a ordem
+	for i in [2:N] do
+		dif2xTHETAb(i)=(THETAb(i+1) - 2*THETAb(i) + THETAb(i-1))/dx^2;	
+	end
+
+	for c in [1:NComp] do
+		
+		for i in [2:N] do
+			dif2xYb(i,c)=(Yb(i+1,c) - 2*Yb(i,c) + Yb(i-1,c))/dx^2;
+		end
+	end
 
 end
