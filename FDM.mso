@@ -1,0 +1,103 @@
+using "types";
+
+Model MDF
+	
+	PARAMETERS
+	
+	#Informa o esquema a ser utilizado
+	#opcao as Switcher (Valid=["MDF1", "MDF2", "MDF2b"],Default="MDF1");
+	
+	#Numero de pontos de discretização+1
+	N as Integer;
+	#Valor inicial
+	xi as Real;
+	#Valor Final
+	xf as Real;
+
+	VARIABLES
+	
+	#Geracao da Malha
+	#Vetor que ira armazenar os valores da malha discretizada
+	x(N+1) as Real;
+	#Incremento da malha
+	dx as Real;
+	
+	#Aproximacoes
+	#Variavel dependente
+	y(N+1) as Real;
+	#Aproximação para 1 derivada 
+	dif1y(N+1) as Real;
+	#Aproximação para 2 derivada 
+	dif2y(N+1) as Real; 
+	
+	EQUATIONS
+	
+	#Calculo do incremento da malha
+	dx=(xf-xi)/N; 
+
+	#Geração da malha de integração
+	for i in [1:N+1] do
+		
+		x(i) = xi + (i-1)*dx;
+	
+	end
+
+	#switch opcao
+	
+	#	case "MDF1":
+	#Aproximacao para 1 derivada no contorno x=x0
+	dif1y(1)=(y(2) - y(1))/dx;
+	
+	#Aproximacao para 1 derivada no contorno x=xf
+	dif1y(N+1)=(y(N+1) - y(N))/dx;
+	
+	#Aproximacao para 1 derivada 
+	for i in [2:N] do
+		dif1y(i)=(y(i+1) - y(i-1))/(2*dx);
+	end
+	
+	#Aproximacao para 2 derivadas 
+	for i in [2:N] do
+		dif2y(i)=(y(i+1) - 2*y(i) + y(i-1))/dx^2;
+	end
+		
+	#	case "MDF2":
+		
+			#Aproximacao para 1 derivada no contorno x=x0
+	#		dif1x(1)=(-3*y(1)/2 + 2*y(2) - y(3)/2)/dx;
+	
+			#Aproximacao para 1 derivada no contorno x=xf
+	#		dif1x(N+1)=(3*y(N+1)/2 - 2*y(N) + y(N-1)/2)/dx;
+	
+			#Aproximacao para 1 derivada 
+	#		for i in [2:N] do
+	#			dif1x(i)=(y(i+1) - y(i-1))/(2*dx);
+	#		end
+	
+			#Aproximacao para 2 derivada 
+	#		for i in [2:N] do
+	#			dif2x(i)=(y(i+1) - 2*y(i) + y(i-1))/dx^2;
+	#		end
+			
+
+	#	case "MDF2b":
+		
+			#Aproximacao para 1 derivada no contorno x=x0
+	#		dif1x(1)=(-y(1) + y(2)/2 + y(3) - y(4)/2)/dx;
+	
+			#Aproximacao para 1 derivada no contorno x=xf
+	#		dif1x(N+1)=(y(N+1) - y(N)/2 - y(N-1) + y(N-2)/2)/dx;
+	
+			#Aproximacao para 1 derivada 
+	#		for i in [2:N] do
+	#			dif1x(i)=(y(i+1) - y(i-1))/(2*dx);
+	#		end
+	
+			#Aproximacao para 2 derivada 
+	#		for i in [2:N] do
+	#			dif2x(i)=(y(i+1) - 2*y(i) + y(i-1))/dx^2;
+	#		end
+			
+	#end		
+
+end

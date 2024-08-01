@@ -1,0 +1,52 @@
+using "FDM";
+
+FlowSheet FDM_din
+
+	PARAMETERS
+	Da as Real;
+	Pe as Real;
+	m as Real;
+
+	DEVICES
+	
+	#Carregando o modulo de diferencas finitas
+	FD as MDF;
+	
+	SET
+	
+	#Especificando o valor de x0
+	FD.xi = 0;
+	#Especificando o valor de xf
+	FD.xf = 1;
+	#Especificando o valor de N
+	FD.N = 1000;
+
+	Da = 5;
+	m = 1;
+	Pe = 2;
+
+	EQUATIONS
+	
+	#Equacao do modelo
+	diff(FD.y)*'s' = (1/Pe)*FD.dif2y - FD.dif1y - Da*FD.y^m;
+
+	#Especificando as condicoes de contorno
+	#Para x=xf
+	FD.dif1y(FD.N+1)=0;
+	
+	#Para x=xi
+	-1/Pe * FD.dif1y(1) = 1 - FD.y(1);	
+	#FD.y(1)=1;	
+	
+	INITIAL
+	#Condicao inicial
+	FD.y(2:FD.N)=0;
+	
+	OPTIONS
+	TimeStep = 0.02;
+	TimeEnd = 0.5;
+	TimeUnit = 's';
+	Dynamic = true;
+end
+
+
