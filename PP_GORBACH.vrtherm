@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- VRTech xml file - http://www.vrtech.com.br  -->
+<archive version="1" revision="1">
+<VRTherm>
+	<Component>WATER</Component>
+	<Component>NITROGEN</Component>
+	<Component>OXYGEN</Component>
+	<Temperature>295.5</Temperature>
+	<TemperatureUnit>K</TemperatureUnit>
+	<Pressure>6400</Pressure>
+	<PressureUnit>kPa</PressureUnit>
+	<LiquidModel>IdealLiquid</LiquidModel>
+	<VapourModel>Ideal</VapourModel>
+	<Composition>0.333333</Composition>
+	<Composition>0.333333</Composition>
+	<Composition>0.333333</Composition>
+	<Database>
+	</Database>
+</VRTherm>
+</archive>

@@ -97,15 +97,15 @@ Model MDF
 	# Aproximacao para a derivada de 1a ordem
 	for i in [2:N] do
 		
-		dif1xTHETAb(i)=(THETAb(i+1) - THETAb(i-1))/(2*dx);
-		dif1xPIb(i)=(PIb(i+1) - PIb(i-1))/(2*dx);
+		dif1xTHETAb(i)=(THETAb(i) - THETAb(i-1))/(dx);
+		dif1xPIb(i)=(PIb(i) - PIb(i-1))/(dx);
 		
 	end	
 	
 	for c in [1:NComp] do 
 		
 		for i in [2:N] do
-			dif1xYb(i,c)=(Yb(i+1,c) - Yb(i-1,c))/(2*dx);
+			dif1xYb(i,c)=(Yb(i,c) - Yb(i-1,c))/(dx);
 		end		
 		
 	end 
@@ -122,5 +122,23 @@ Model MDF
 			dif2xYb(i,c)=(Yb(i+1,c) - 2*Yb(i,c) + Yb(i-1,c))/dx^2;
 		end
 	end
+	
+	# Aproximacao para 1 derivada no contorno x=x0
+	dif2xTHETAb(1)=0;
+	
+	for c in [1:NComp] do 
+		
+		dif2xYb(1,c)=0;
+		
+	end 
+	
+	# Aproximacao para 1 derivada no contorno x=x0
+	dif2xTHETAb(N+1)=0;
+	
+	for c in [1:NComp] do 
+		
+		dif2xYb(N+1,c)=0;
+		
+	end 
 
 end

@@ -297,7 +297,6 @@ Estimation Estimating as TESTANDO_FDM
 	);
 end
 
-
 Optimization OPTIMIZATION
 	
 	SPECIFY
@@ -345,6 +344,67 @@ Optimization OPTIMIZATION
 			  );
 	Dynamic = false;
 end
+
+Optimization OPTIMIZATION_mu
+	
+	PARAMETERS
+	NComp as Integer (Brief = "Number of Components");
+	
+	SET
+	NComp = PP.NumberOfComponents;
+
+	SPECIFY
+	zi0_H2O = 0.004594;
+	Desirable_mu_Air = 2.0E-05*'kg/m/s';
+	T0 = ((50.0)+273.15)*'K';
+	P0 = (2.0)*'bar';
+
+	VARIABLES
+	zi0_N2 as positive (Brief = "Inlet N2 Molar Fraction", Default=0.79, Lower=1.0E-06, Upper=1.0);
+	zi0_O2 as positive (Brief = "Inlet O2 Molar Fraction", Default=0.21, Lower=1.0E-06, Upper=1.0);
+	zini_N2 as positive (Brief = "Initial N2 Molar Fraction", Default=0.79, Lower=1.0E-06, Upper=1.0);
+	zini_O2 as positive (Brief = "Initial N2 Molar Fraction", Default=0.21, Lower=1.0E-06, Upper=1.0);
+	zini(NComp) as positive (Brief = "Initial N2 Molar Fraction", Default=0.21, Lower=1.0E-06, Upper=1.0);
+	zi0_H2O as Real (Brief = "Calculated Air Molecular Weight", Default=0.004594, Lower=1.0E-06, Upper=1.0);
+    Calc_mu_Air as Real (Brief = "Calculated Air Molecular Weight", Unit = 'kg/m/s', Default=2.0E-05);
+    Desirable_mu_Air as Real (Brief = "Desirable Air Molecular Weight", Unit = 'kg/m/s', Default=2.0E-05);
+	
+	zi0(NComp) as positive (Brief = "Inlet Bulk Molar Fraction");
+	T0 as temperature (Brief = "Inlet Temperature");
+	P0 as positive (Brief = "Inlet Pressure", Unit = 'bar');
+
+	PARAMETERS
+	PP as Plugin (Brief = "Physical Properties", Type="PP", Project = "PP_GORBACH.vrtherm");
+	
+	EQUATIONS
+    zini = [0.0000000000000, zini_N2, zini_O2];
+	
+	zi0_N2 = (1 - zi0_H2O) - zi0_O2;
+	
+	zini_N2 =  zi0_N2/(zi0_O2+zi0_N2);
+	zini_O2 = zi0_O2/(zi0_O2+zi0_N2);
+	
+    Calc_mu_Air = PP.VapourViscosity(T0,P0,zini);
+
+	MINIMIZE
+	(Calc_mu_Air - Desirable_mu_Air)^2;
+
+	OPTIONS
+	NLPSolver(MaxIterations=2000,
+			  AbsoluteAccuracy=1e-15,
+			  RelativeAccuracy=1e-15,
+			  #File = "ipopt_emso", hessian_approximation = "exact"
+			  #File = "complex"
+	          #File = "optpp_emso"
+			  #File = "arshj"
+			  #File = "PSO"
+			  File = "ipopt_emso"
+			  );
+	Dynamic = false;
+end
+
+
+
 
 
 ################################################################################
@@ -1113,7 +1173,7 @@ Model ADSORPTION
 	#######################################################################################################################################
 
 	for c in [1:NComp] do  
-		for i in [1:nd] do
+		for i in [2:FD.N] do
 		
 			"Adimensional Bulk Mass Balance"
 			#diff(OCFEM.Yb(p,e,c))*'s' =  (1/Pem(c))*OCFEM.dif2xYb(p,e,c) - OCFEM.dif1xYb(p,e,c) - alphab*diff(OCFEM.ub(p,e,c))*'s';
@@ -1322,7 +1382,7 @@ Model ADSORPTION
 	##### ----- Momentum Balance Ordinary Equation -----
 	####################################################
 
-	for i in [1:nd-1] do
+	for i in [1:FD.N] do
 		
 		"Adimensional Bulk Momentum Balance"
 		Lambdab*FD.dif1xPIb(i) = -150.0*((1.0-ei)^2.0)/(ei^3.0)/Reb - 1.75*(1.0-ei)/ei^3.0;
@@ -1404,7 +1464,7 @@ Model ADSORPTION
 	
 #	for e in [1:FD.ne] do
 #		for p in [2:FD.np-1] do
-	for i in [1:nd] do
+	for i in [2:FD.N] do
 
 		"Adimensional Bulk Energy Balance"
 		epsilon*diff(FD.THETAb(i)) = ei*Phib*FD.dif2xTHETAb(i)*(1/t) - FD.dif1xTHETAb(i)*(1/t) - Psib*(FD.THETAb(i)-FD.THETAp(i))*(1/t);
