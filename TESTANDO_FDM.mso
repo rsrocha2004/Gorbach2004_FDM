@@ -14,11 +14,11 @@ using "streams";
 
 FlowSheet TESTANDO_FDM
 
-	#VARIABLES
-	#zb_H2O as Real (Brief = "Water Molar Fraction");
+	VARIABLES
+	zb_H2O as Real (Brief = "Water Molar Fraction");
 
-	#EQUATIONS
-	#zb_H2O = SIEVE.FD.respzb(SIEVE.ne*SIEVE.np-(SIEVE.ne-1),1);
+	EQUATIONS
+	zb_H2O = SIEVE.FD.zb(SIEVE.FD.N+1,1);
 
 
 	#######
@@ -91,7 +91,7 @@ FlowSheet TESTANDO_FDM
 	#Especificando o valor de xf
 	SIEVE.FD.xf = 1.0;
 	#Especificando o valor de N
-	SIEVE.FD.N = 20;
+	SIEVE.FD.N = 200;
 
 
 	##### ----- MATERIAL BALANCE --- #####
@@ -114,7 +114,7 @@ FlowSheet TESTANDO_FDM
 	
 	# ----- Choosing the LDF Model -----
 		
-	SIEVE.LDF_Model = "LDF_Macro"; # "LDF_Macro_ExtFilm"; # "LDF_Micro_Macro_ExtFilm"; "Fitting_kldf";
+	SIEVE.LDF_Model = "LDF_Macro"; #"LDF_Macro"; # "LDF_Macro_ExtFilm"; # "LDF_Micro_Macro_ExtFilm"; "Fitting_kldf";
 	# Define the particle mass transfer model: "LDF_Micro", "LDF_Macro", "LDF_ExtFilm", "LDF_Micro_Macro", "LDF_Micro_ExtFilm", "LDF_Macro_ExtFilm", "LDF_Micro_Macro_ExtFilm", "Fitting_kldf"
 
 	#SIEVE.defined_kldf = [10.71927E-03,8.45163E-03,8.82451E-03,1.90798E-03]*'1/s'; # (Vasconcelos2020)
@@ -145,8 +145,8 @@ FlowSheet TESTANDO_FDM
 	# Mw=28.96
 	#SIEVE.zini = [0.0, 0.7624948387893985, 0.23750516121060147]; # -> CASO A
 	#SIEVE.zini = [0.0, 0.7624563387036832, 0.23754366129631674]; # -> CASO B
-	SIEVE.zini = [0.0, 0.7624926913583224, 0.2375073086416776]; # -> CASO C
-	#SIEVE.zini = [0.0, 0.7625098697197, 0.2374901302803]; # -> CASO D
+	#SIEVE.zini = [0.0, 0.7624926913583224, 0.2375073086416776]; # -> CASO C
+	SIEVE.zini = [0.0, 0.7625098697197, 0.2374901302803]; # -> CASO D
 
 	# Mw=30.45
 	#SIEVE.zini = [0.0, 0.3886013910404401, 0.6113986089595599]; # -> CASO A
@@ -159,8 +159,8 @@ FlowSheet TESTANDO_FDM
 	# Mw=28.96
 	#SIEVE.zi0 = [0.004594, 0.7589919375, 0.23641406249999997]; # -> CASO A
 	#SIEVE.zi0 = [0.004410, 0.75909390625, 0.23649609374999997]; # -> CASO B
-	SIEVE.zi0 = [0.004603, 0.7589829375, 0.23641406249999997]; # -> CASO C
-	#SIEVE.zi0 = [0.004531, 0.7590549375000001, 0.23641406249999997]; # -> CASO D
+	#SIEVE.zi0 = [0.004603, 0.7589829375, 0.23641406249999997]; # -> CASO C
+	SIEVE.zi0 = [0.004531, 0.7590549375000001, 0.23641406249999997]; # -> CASO D
 
 	# Mw=30.45
 	#SIEVE.zi0 = [0.004594, 0.3868161562500003, 0.6085898437499997]; # -> CASO A
@@ -170,18 +170,18 @@ FlowSheet TESTANDO_FDM
 	
 	#SIEVE.T0 = ((30.0)+273.15)*'K'; # -> CASO A
 	#SIEVE.T0 = ((30.0)+273.15)*'K'; # -> CASO B
-	SIEVE.T0 = ((50.0)+273.15)*'K'; # -> CASO C
-	#SIEVE.T0 = ((80.0)+273.15)*'K'; # -> CASO D
+	#SIEVE.T0 = ((50.0)+273.15)*'K'; # -> CASO C
+	SIEVE.T0 = ((80.0)+273.15)*'K'; # -> CASO D
 	
 	#SIEVE.P0 = (5.0)*'bar'; # -> CASO A
 	#SIEVE.P0 = (2.0)*'bar'; # -> CASO B
-	SIEVE.P0 = (2.0)*'bar'; # -> CASO C
-	#SIEVE.P0 = (2.0)*'bar'; # -> CASO D
+	#SIEVE.P0 = (2.0)*'bar'; # -> CASO C
+	SIEVE.P0 = (2.0)*'bar'; # -> CASO D
 
 	#SIEVE.Fnormal = (1.84)*'l/min'; # -> CASO A
 	#SIEVE.Fnormal = (1.998)*'l/min'; # -> CASO B
-	SIEVE.Fnormal = (2.00)*'l/min'; # -> CASO C
-	#SIEVE.Fnormal = (1.98)*'l/min'; # -> CASO D
+	#SIEVE.Fnormal = (2.00)*'l/min'; # -> CASO C
+	SIEVE.Fnormal = (1.98)*'l/min'; # -> CASO D
 	
 	# ----- Geometry -----
 	
@@ -233,16 +233,16 @@ FlowSheet TESTANDO_FDM
 	# ----- Bulk Material Balance Initial Conditions -----
 
 	#SIEVE.OCFEM.Yb(2:SIEVE.OCFEM.np-1,1:SIEVE.OCFEM.ne,1) = SIEVE.Ybini(1);
-	SIEVE.FD.Yb(2:SIEVE.nd-1,1) = SIEVE.Ybini(1);
-	SIEVE.FD.Yb(2:SIEVE.nd-1,2) = SIEVE.Ybini(2);
-	SIEVE.FD.Yb(2:SIEVE.nd-1,3) = SIEVE.Ybini(3);
+	SIEVE.FD.Yb(2:SIEVE.FD.N,1) = SIEVE.Ybini(1);
+	SIEVE.FD.Yb(2:SIEVE.FD.N,2) = SIEVE.Ybini(2);
+	SIEVE.FD.Yb(2:SIEVE.FD.N,3) = SIEVE.Ybini(3);
 	
 	# ----- Solid Material Balance Initial Conditions -----
 
 	#SIEVE.OCFEM.ub(1:SIEVE.OCFEM.np,1:SIEVE.OCFEM.ne,1) = SIEVE.uini(1);
-	SIEVE.FD.ub(1:SIEVE.nd,1) = SIEVE.uini(1);
-	SIEVE.FD.ub(1:SIEVE.nd,2) = SIEVE.uini(2);
-	SIEVE.FD.ub(1:SIEVE.nd,3) = SIEVE.uini(3);
+	SIEVE.FD.ub(1:SIEVE.FD.N+1,1) = SIEVE.uini(1);
+	SIEVE.FD.ub(1:SIEVE.FD.N+1,2) = SIEVE.uini(2);
+	SIEVE.FD.ub(1:SIEVE.FD.N+1,3) = SIEVE.uini(3);
 	# Vai de 1 ate np porque ub nao tem derivada com relacao a Z
 
 	##### ----- ENERGY BALANCE ------- #####
@@ -250,12 +250,12 @@ FlowSheet TESTANDO_FDM
 	# ----- Bulk Energy Balance Initial Conditions -----
 
 	#SIEVE.OCFEM.THETAb(2:SIEVE.OCFEM.np-1,1:SIEVE.OCFEM.ne) = SIEVE.THETAbini;
-	SIEVE.FD.THETAb(2:SIEVE.nd-1) = SIEVE.THETAbini; 
+	SIEVE.FD.THETAb(2:SIEVE.FD.N) = SIEVE.THETAbini; 
 	
 	# ----- Solid Energy Balance Initial Conditions -----
 
 	#SIEVE.OCFEM.THETAp(1:SIEVE.OCFEM.np,1:SIEVE.OCFEM.ne) = SIEVE.THETApini; 
-	SIEVE.FD.THETAp(1:SIEVE.nd) = SIEVE.THETApini; 
+	SIEVE.FD.THETAp(1:SIEVE.FD.N+1) = SIEVE.THETApini; 
 	# Vai de 1 ate np porque THETAp nao tem derivada com relacao a Z
 
 	# ----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -272,7 +272,7 @@ CaseStudy Case_Study as TESTANDO_FDM
 
 	RESPONSE
 	
-	zb_H2O;
+	SIEVE.zb_H2O;
 
 end
 
@@ -425,7 +425,7 @@ Model ADSORPTION
 	
 	# ----- Number of Nodal Points -----
 	
-	nd as Integer (Brief = "Number of Nodal Points");
+	#nd as Integer (Brief = "Number of Nodal Points");
 		
 	##### ----- MATERIAL BALANCE ----- #####
 	
@@ -527,7 +527,7 @@ Model ADSORPTION
 	
 	# ----- Number of Nodal Points -----
 
-	nd = FD.N + 1;
+	#nd = FD.N + 1;
 	
 	##### ----- MATERIAL BALANCE ----- #####
 
@@ -967,7 +967,7 @@ Model ADSORPTION
 	
 	# ----- Total Bulk Concentration Calculation -----
 	
-	for i in [1:nd] do
+	for i in [1:FD.N+1] do
 			
 		"Total Bulk Concentration"
 		FD.Cbt(i) = sum(Ci0*FD.Yb(i,:));
@@ -977,7 +977,7 @@ Model ADSORPTION
 	# ----- Bulk Concentration and Molar Fraction Calculation -----
 	
 	for c in [1:NComp] do
-		for i in [1:nd] do
+		for i in [1:FD.N+1] do
 				
 			if FD.Cbt(i) > 0.0*'kmol/m^3' then
 				
@@ -995,7 +995,7 @@ Model ADSORPTION
 	end
 	
 	for c in [1:NComp] do
-		for i in [1:nd] do
+		for i in [1:FD.N+1] do
 			
 			"Bulk Concentration Profile Calculation"
 			FD.Cb(i,c) = Ci0(c) * FD.Yb(i,c);
@@ -1009,7 +1009,7 @@ Model ADSORPTION
 	# ----- Adsorbed Concentration and Equilibrium Adsorbed Concentration Calculation -----
 		
 	for c in [1:NComp] do
-		for i in [1:nd] do
+		for i in [1:FD.N+1] do
 			
 			"Particle Concentration Profile Calculation"
 			FD.qb(i,c) = (Ci0(c)/rhoB) * FD.ub(i,c);
@@ -1022,7 +1022,7 @@ Model ADSORPTION
 	# ----- Partial Pressure Calculations -----
 
 	for c in [1:NComp] do
-		for i in [1:nd] do
+		for i in [1:FD.N+1] do
 				
 			if FD.Cbt(i) > 0.0*'kmol/m^3' then
 				
@@ -1055,7 +1055,7 @@ Model ADSORPTION
 		qi0(2) = 0*'kmol/kg';
 		qi0(3) = 0*'kmol/kg';		
 
-		for i in [1:nd] do
+		for i in [1:FD.N+1] do
 				
 			"Extended Dual Site Langmuir Isotherm (Gholami2010b)"
 			FD.ub_eq(i,1) = Aging*( (rhoB/Ci0(1)) * IPG0 * ( IPG1*FD.pi(i,1) + IPG2*FD.pi(i,1)*FD.pi(i,1) ) / ( 1 + IPG3*FD.pi(i,1) + IPG4*FD.pi(i,1)*FD.pi(i,1) ) );
@@ -1075,7 +1075,7 @@ Model ADSORPTION
 		end
 		
 		for c in [1:NComp] do
-			for i in [1:nd] do
+			for i in [1:FD.N+1] do
 					
 				"Extended Dual Site Langmuir Isotherm (Gholami2010b)"
 				FD.ub_eq(i,c) = Aging*( (rhoB/Ci0(c))*( qs(c,1)*(b(c,1)*FD.pi(i,c))/(1.0+sum(b(:,1)*FD.pi(i,:))) 
@@ -1097,7 +1097,7 @@ Model ADSORPTION
 		end
 		
 		for c in [1:NComp] do
-			for i in [1:nd] do
+			for i in [1:FD.N+1] do
 					
 				"Extended Dual Site Langmuir Isotherm (Cavalcante2023)"
 				FD.ub_eq(i,c) = Aging*( (rhoB/Ci0(c)) * ( IPC1(c)*exp(IPC2(c)/(T0*FD.THETAp(i)))*FD.pi(i,c)/(1.0+sum(IPC3(:)*exp(IPC4(:)/(T0*FD.THETAp(i)))*FD.pi(i,:))) 
@@ -1118,7 +1118,7 @@ Model ADSORPTION
 		end
 
 		for c in [1:NComp] do
-			for i in [1:nd] do
+			for i in [1:FD.N+1] do
 				
 				"Langmuir 3 Isotherm (Vasconcelos2020)"
 				FD.ub_eq(i,c) = Aging*( (rhoB/Ci0(c)) * (IPV1(c)-IPV2(c)*T0)*( (IPV3(c)*exp(IPV4(c)/T0)*FD.pi(i,c))/(1.0+IPV3(c)*exp(IPV4(c)/T0)*FD.pi(i,c)) ) );
@@ -1194,7 +1194,7 @@ Model ADSORPTION
 		ei*(1.0/Pem(c))*FD.dif1xYb(1,c) = FD.Yb(1,c) - 1.0; #(1/PeM)*ddYb/dx = Yb(x=0+)-1 
 		#(1.0/Pem(c))*OCFEM.dif1xYb(1,1,c) = OCFEM.Yb(1,1,c) - 1.0; #(1/PeM)*ddYb/dx = Yb(x=0+)-1 
 		"Boundary Condition at x=1 (Adimensional Bulk Mass Balance)"
-		FD.dif1xYb(nd,c) = 0.0; # (Z=L)
+		FD.dif1xYb(FD.N+1,c) = 0.0; # (Z=L)
 		
 	end
 
@@ -1346,7 +1346,7 @@ Model ADSORPTION
 	#########################################################################################
 
 	for c in [1:NComp] do
-		for i in [1:nd] do
+		for i in [1:FD.N+1] do
 			
 			"Linear Driving Force (LDF)"
 			#diff(OCFEM.ub(p,e,c))*'s' = KLDF(c) * (OCFEM.ub_eq(p,e,c)-OCFEM.ub(p,e,c));
@@ -1396,7 +1396,7 @@ Model ADSORPTION
 	#"Boundary Condition at x=0 (Adimensional Bulk Momentum Balance)"
 	# OCFEM.PIb(1,1) = 1.0; # (Z=0)
 	"Boundary Condition at x=1 (Adimensional Bulk Momentum Balance)"
-	FD.PIb(nd) = 1.0; 
+	FD.PIb(FD.N+1) = 1.0; 
 
 	# ----- Dimensionalizing some Momentum Dependent Variables
 
@@ -1405,7 +1405,7 @@ Model ADSORPTION
 	
 	# ----- Pressure Profile Calculation -----
 	
-	for i in [1:nd] do
+	for i in [1:FD.N+1] do
 		
 		"Bulk Pressure Profile Calculation"
 		FD.Pb(i) = P0 * FD.PIb(i);
@@ -1478,7 +1478,7 @@ Model ADSORPTION
 	# ----- Solid Energy Balance Partial Equation -------------------------------------------------------------------- #####	
 	########################################################################################################################
 
-	for i in [1:nd] do
+	for i in [1:FD.N+1] do
 		# vai de 1 a np
 		
 		"Adimensional Solid Energy Balance"
@@ -1496,7 +1496,7 @@ Model ADSORPTION
 	ei*Phib*FD.dif1xTHETAb(1,1) = FD.THETAb(1,1) - 1.0; #Phib*THETAb/dx = THETAb(x=0+)-1 
 	"Boundary Condition at x=1 (Adimensional Bulk Energy Balance)"
 	#FD.dif1xTHETAb(FD.np,FD.ne) = 0.0; # (Z=L)
-	FD.dif1xTHETAb(nd) = 0.0; # (Z=L)
+	FD.dif1xTHETAb(FD.N+1) = 0.0; # (Z=L)
 	
 	# ----- Dimensionalizing some Energy Dependent Variables
 
@@ -1508,7 +1508,7 @@ Model ADSORPTION
 	
 	# ----- Temperature Profile Calculation -----
 	
-	for i in [1:nd] do
+	for i in [1:FD.N+1] do
 		
 		"Bulk Temperature Profile Calculation"
 		FD.Tb(i) = T0 * FD.THETAb(i);
