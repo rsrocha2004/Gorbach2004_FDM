@@ -1,315 +1,144 @@
 using "types";
-	
-Model MCO_EF
-	
-	
-	
+
+Model MDF
+
 	PARAMETERS
 
-	MCO as Plugin (Type = "OCFEM",Boundary = "BOTH", # "BOTH": inclui x=0 e x=1 como pontos nodais mais os pontos internos.
-				InternalPoints = 5, # Se InternalPoints=2, em "BOTH", np=2+2(pontos internos, x=0 e x=1 )=4
-				alfa = 0, beta = 0);
+	N as Integer (Brief = "Number of Nodal Points + 1");
+
+	xi as Real (Brief = "Inlet Value");
+	xf as Real (Brief = "Outlet Value");
 	
 	outer NComp as Integer (Brief = "Number of Components");
-	outer ne as Integer (Brief = "Number of Elements");
-	outer np as Integer (Brief = "Number of Colocation Points");
-	
-	N as Integer;
-	A(N) as Real (Brief = "Recebe os Valores do Vetor A");
-	B(N) as Real (Brief = "Recebe os Valores do Vetor B");
-	r(np) as Real (Brief = "Raizes de Jacobi");
-
-
-
-	SET
-
-	N = MCO.NodalPoints * MCO.NodalPoints; # N=np*np
-	A = MCO.matrixA;	
-	B = MCO.matrixB;
-	r = MCO.roots;
-
-
 
 	VARIABLES
 	
-	h(ne+1) as Real(Brief = "Fronteiras dos Elementos");
+	# Geracao da Malha
+	# Vetor que ira armazenar os valores da malha discretizada
+	x(N+1) as Real (Brief = "Discretized Values");
+	# Incremento da malha
+	dx as Real  (Brief = "Increment");
 	
-	rr(np,ne) as Real; #raízes "desnormalizadas"
-	s(ne*np-(ne-1)+1) as Real (Brief = "Variavel Independente Adimensional para Lagrange"); #mais 1 pro lagrange
-	Z(ne*np-(ne-1)+1) as Real (Brief = "Variavel Independente para Lagrange", Unit = 'm');#mais 1 pro lagrange
-	
-	# Variavel independente 
-
-	# Balanco de Massa: Variavel Dependente
-	Yb(np,ne,NComp) as Real (Brief = "Adimensional Bulk Concentration: Dependent Variable of Bulk Mass Balance Equation"); 
-	# Balanco de Energia: Variavel Dependente
-	THETAb(np,ne) as Real (Brief = "Adimensional Bulk Temperature: Dependent Variable of Bulk Energy Balance Equation");
-	THETAp(np,ne) as Real (Brief = "Adimensional Particle Temperature: Dependent Variable of Particle Energy Balance Equation");
+	# Balanco de Massa: Variavel dependente
+	Yb(N+1,NComp) as Real (Brief = "Adimensional Bulk Concentration: Dependent Variable of Bulk Mass Balance Equation");
+	# Balanco de Energia: Variavel dependente
+	THETAb(N+1) as Real (Brief = "Adimensional Bulk Temperature: Dependent Variable of Bulk Energy Balance Equation");
+	THETAp(N+1) as Real (Brief = "Adimensional Particle Temperature: Dependent Variable of Particle Energy Balance Equation");
 	# Balanco de Momentum: Variavel Dependente
-	PIb(np,ne) as Real (Brief = "Adimensional Bulk Pressure: Dependent Variable of Ergun Equation");
+	PIb(N+1) as Real (Brief = "Adimensional Bulk Pressure: Dependent Variable of Ergun Equation");
 	# Demais Variaveis "Dependentes" desdobradas a partir de Yb
-	pi(np,ne,NComp) as Real (Brief = "Bulk Partial Pressure", Unit = 'kPa'); 
-	ub(np,ne,NComp) as Real (Brief = "Adimensional Average Particle Concentration"); 
-	#uc(np,ne,NComp) as Real (Brief = "Adimensional Average Crystal Concentration"); 
-	ub_eq(np,ne,NComp) as Real (Brief = "Adimensional Equilibriun Particle Concentration");
-	Cbt(np,ne) as Real (Brief = "Total Bulk Concentration", Unit = 'mol/(m^3)');
+	pi(N+1,NComp) as Real (Brief = "Bulk Partial Pressure", Unit = 'kPa'); 
+	ub(N+1,NComp) as Real (Brief = "Adimensional Average Particle Concentration"); 
+	# uc(np,ne,NComp) as Real (Brief = "Adimensional Average Crystal Concentration"); 
+	ub_eq(N+1,NComp) as Real (Brief = "Adimensional Equilibriun Particle Concentration");
+	Cbt(N+1) as Real (Brief = "Total Bulk Concentration", Unit = 'mol/(m^3)');
 	
-	Cb(np,ne,NComp) as Real (Brief = "Bulk Concentration: Dependent Variable of Bulk Mass Balance Equation", Unit = 'kmol/m^3');
-	qb(np,ne,NComp) as Real (Brief = "Average Particle Concentration", Unit = 'kmol/kg');
-	qb_eq(np,ne,NComp) as Real (Brief = "Equilibrium Average Particle Concentration", Unit = 'kmol/kg');
-	zb(np,ne,NComp) as Real (Brief = "Molar Fraction");
-	zbi(np,ne,NComp) as Real (Brief = "Molar Fraction");
-	zi(np,ne,NComp) as Real (Brief = "Molar Fraction");
+	Cb(N+1,NComp) as Real (Brief = "Bulk Concentration: Dependent Variable of Bulk Mass Balance Equation", Unit = 'kmol/m^3');
+	qb(N+1,NComp) as Real (Brief = "Average Particle Concentration", Unit = 'kmol/kg');
+	qb_eq(N+1,NComp) as Real (Brief = "Equilibrium Average Particle Concentration", Unit = 'kmol/kg');
+	zb(N+1,NComp) as Real (Brief = "Molar Fraction");
+	zbi(N+1,NComp) as Real (Brief = "Molar Fraction");
+	zi(N+1,NComp) as Real (Brief = "Molar Fraction");
 
-	Tb(np,ne) as Real (Brief = "Particle Temperature: Dependent Variable of Bulk Energy Balance Equation", Unit = 'K');
-	Tp(np,ne) as Real (Brief = "Particle Temperature: Dependent Variable of Particle Energy Balance Equation", Unit = 'K');
-	Tb_C(np,ne) as Real (Brief = "Particle Temperature: Dependent Variable of Bulk Energy Balance Equation", Unit = 'K');
-	Tp_C(np,ne) as Real (Brief = "Particle Temperature: Dependent Variable of Particle Energy Balance Equation", Unit = 'K');
+	Tb(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Bulk Energy Balance Equation", Unit = 'K');
+	Tp(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Particle Energy Balance Equation", Unit = 'K');
+	Tb_C(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Bulk Energy Balance Equation", Unit = 'K');
+	Tp_C(N+1) as Real (Brief = "Particle Temperature: Dependent Variable of Particle Energy Balance Equation", Unit = 'K');
 	
-	Pb(np,ne) as Real (Brief = "Bulk Pressure", Unit = 'kPa');
+	Pb(N+1) as Real (Brief = "Bulk Pressure", Unit = 'kPa');
 
-	# ----- Bulk Transport Properties -----
-	#rhob(np,ne) as Real (Brief = "Bulk Specific Gravity", Unit = 'kg/m^3');
-	#mub(np,ne) as Real (Brief = "Bulk Viscosity", Default = 1e-3, Unit = 'kg/m/s');
-	#Mwb(np,ne) as molweight (Brief = "Bulk Molecular Weight");
-	# ----- Velocity -----
-	#F(np,ne) as positive (Brief = "Inlet Gas Flow", Unit = 'l/min'); 
-	#m(np,ne) as flow_mass (Brief = "Inlet Mass Flow");
-	#Vb(np,ne) as velocity (Brief = "Bulk Velocity");
-	# ----- Molecular Diffusivity -----
-	#Dkj(np,ne,NComp,NComp) as Real (Brief = "Binary Molecular Difusivity", Unit = 'm^2/s');
-	#Dm(np,ne,NComp) as Real (Brief = "Molecular Difusivity", Unit = 'm^2/s');
-	# ----- Material Balance Adimensional Numbers -----
-	#Reb(np,ne) as Real (Brief = "Bulk Relnolds Number");
-	#Scb(np,ne,NComp) as Real (Brief = "Bulk Schmidt Number");
-	#Dax(np,ne,NComp) as Real (Brief = "Axial Difusivity", Unit = 'm^2/s');
-	#Pem(np,ne,NComp) as positive (Brief = "Mass Balance Peclet Number");
-	#Shb(np,ne,NComp) as Real (Brief = "Bulk Sherwood Number");
-	# ----- Mass Transfer Resistence -----
-	#kf(np,ne,NComp) as Real (Brief = "External Film Mass Transfer Coefficient", Unit = 'm/s');
-	#Dp(np,ne,NComp) as Real (Brief = "Macropore Effective Diffusivity", Unit = 'm^2/s');
-	#Dk(np,ne,NComp) as Real (Brief = "Knudsen Diffusivity", Unit = 'm^2/s');
-	#Dc(np,ne,NComp) as Real (Brief = "Crystalline Difusivity", Unit = '(m^2)/s');
-	# ----- Choosing the LDF Model -----
-	#kldf(np,ne,NComp) as Real (Brief = "Global Mass Transfer Coefficient", Unit = '1/s');
-	# ----- Time -----
-	#t(np,ne) as Real (Brief = "Time", Unit = 's');
-	# ----- Adimensional Global Mass Transfer Coefficient: Kldf -----
-	#KLDF0(np,ne,NComp) as Real (Brief = "Adimensional Global Mass Transfer Coefficient");
-	# ----- Momentum Balance Adimensional Numbers -----
-	#Lambdab(np,ne) as Real (Brief = "Adimensional Bulk Ergun Equation Parameter");
-	# ----- Bulk Energy Transport Properties -----
-	#Cpb_mol(np,ne) as cp_mol (Brief = "Bulk Molar Heat Capacity"); 
-	#Cpb(np,ne) as cp_mass (Brief = "Bulk Heat Capacity"); 
-	#Kb(np,ne) as Real (Brief = "Bulk Thermal Conductivity", Unit = 'W/m/K');
-	# ----- Energy Balance Adimensional Numbers -----
-	#Prb(np,ne) as Real (Brief = "Bulk Prandtl Number");
-	#Kax(np,ne) as Real (Brief = "Effective Axial Bulk Thermal Conductivity", Unit = 'W/m/K');
-	#Nub(np,ne) as Real (Brief = "Bulk Nusselt Number");
-	#hfb(np,ne) as Real (Brief = "Convective Heat Transfer Coefficient", Unit = 'W/m^2/K');
-	#Phib(np,ne) as Real (Brief = "1st Term Adimensional Bulk Energy Balance Parameter");
-	#Psib(np,ne) as Real (Brief = "3rd Term Adimensional Bulk Energy Balance Parameter");
-	#Phis(np,ne) as Real (Brief = "1st Term Adimensional Solid Energy Balance Parameter");
-	#Psip(np,ne) as Real (Brief = "2rd Term Adimensional Particle Energy Balance Parameter");
-	
 	# Balanco de Massa: Discretizacao das Derivadas
-	dif1xYb(np,ne,NComp) as Real(Brief = "First Derivative Function of Adimensional Bulk Concentration");
-	#dif1x(np,ne) as Real (Brief="primeira derivada da func");
-	dif2xYb(np,ne,NComp) as Real(Brief = "Second Derivative Function of Adimensional Bulk Concentration");
-	#dif2x(np,ne) as Real (Brief="segunda derivada da func");
+	dif1xYb(N+1,NComp) as Real(Brief = "First Derivative Function of Adimensional Bulk Concentration");
+	# dif1x(np,ne) as Real (Brief="primeira derivada da func");
+	dif2xYb(N+1,NComp) as Real(Brief = "Second Derivative Function of Adimensional Bulk Concentration");
+	# dif2x(np,ne) as Real (Brief="segunda derivada da func");
 
 	# Balanco de Momentum: Discretizacao das Derivadas
-	dif1xPIb(np,ne) as Real (Brief = "First Derivative Function of Adimensional Ergun Equation");
+	dif1xPIb(N+1) as Real (Brief = "First Derivative Function of Adimensional Ergun Equation");
 
 	# Balanco de Energia: Discretizacao das Derivadas
-	dif1xTHETAb(np,ne) as Real (Brief = "First Derivative Function of Adimensional Ergun Equation");
-	dif2xTHETAb(np,ne) as Real (Brief = "Second Derivative Function of Adimensional Energy Balance");
-
-	respYb(ne*np-(ne-1),NComp) as Real (Brief = "Adimensional Vector Bulk Concentration"); #Resposta final
-	respub(ne*np-(ne-1),NComp) as Real (Brief = "Adimensional Vector Bulk Concentration"); #Resposta final
-	respub_eq(ne*np-(ne-1),NComp) as Real (Brief = "Adimensional Vector Bulk Concentration"); #Resposta final
-	respTHETAb(ne*np-(ne-1)) as Real (Brief = "Adimensional Vector Bulk Temperature"); #Resposta final
-	respTHETAp(ne*np-(ne-1)) as Real (Brief = "Adimensional Vector Solid Temperature"); #Resposta final
-	respPIb(ne*np-(ne-1)) as Real (Brief = "Adimensional Vector Bulk Pressure"); #Resposta final
-
-	respCb(ne*np-(ne-1),NComp) as Real (Brief = "Vector Bulk Concentration", Unit = 'kmol/m^3');
-	respqb(ne*np-(ne-1),NComp) as Real (Brief = "Vector Particle Concentration", Unit = 'kmol/kg'); #Resposta final
-	respqb_eq(ne*np-(ne-1),NComp) as Real (Brief = "Vector Equilibrium Particle Concentration", Unit = 'kmol/kg'); #Resposta final
-
-	respzb(ne*np-(ne-1),NComp) as Real (Brief = "Vector Bulk Concentration");
-	respzbi(ne*np-(ne-1),NComp) as Real (Brief = "Vector Bulk Concentration");
-	respzi(ne*np-(ne-1),NComp) as Real (Brief = "Vector Bulk Concentration");
-	
-	respTb(ne*np-(ne-1)) as Real (Brief = "Vector Bulk Temperature", Unit = 'K');
-	respTp(ne*np-(ne-1)) as Real (Brief = "Vector Solid Temperature", Unit = 'K');
-	respTb_C(ne*np-(ne-1)) as Real (Brief = "Vector Bulk Temperature", Unit = 'K');
-	respTp_C(ne*np-(ne-1)) as Real (Brief = "Vector Solid Temperature", Unit = 'K');
-	
-	respPb(ne*np-(ne-1)) as Real (Brief = "Vector Bulk Pressure", Unit = 'kPa');
-	
-	#resprhob(ne*np-(ne-1)) as Real (Brief = "Vector Bulk Specific Gravity", Unit = 'kg/m^3');
-
-	mA(np,np) as Real (Brief="Cria a Matriz A");
-	mB(np,np) as Real (Brief="Cria a Matriz B");
-
-
+	dif1xTHETAb(N+1) as Real (Brief = "First Derivative Function of Adimensional Ergun Equation");
+	dif2xTHETAb(N+1) as Real (Brief = "Second Derivative Function of Adimensional Energy Balance");
 
 	EQUATIONS
-
-	#comando para criar as matrizes
-		for i in [1:np] do
-			for j in [1:np] do
-				mA(i,j) = A(i+(j-1)*np);
-				mB(i,j) = B(i+(j-1)*np);
-			end
-		end
 	
-	#Renomeando as derivadas:
+	# Calculo do incremento da malha
+	dx=(xf-xi)/N; 
+
+	# Geração da malha de integração
+	for i in [1:N+1] do
+		
+		x(i) = xi + (i-1)*dx;
+		
+	end
+
+	# Aproximacao para 1 derivada no contorno x=x0
+	dif1xTHETAb(1)=(THETAb(2) - THETAb(1))/dx;
+	dif1xPIb(1)=(PIb(2) - PIb(1))/dx;
+	
 	for c in [1:NComp] do 
-		for e in [1:ne] do
-			for p in [1:np] do
-				# Derivada da primeira: dY/dx
-				dif1xYb(p,e,c) = sum(mA(p,:)*Yb(:,e,c)) * 1/(h(e+1)-h(e)); # (h(k+1)-h(k)) = 1/(deltaXk)
-				# Derivada da segunda: d2Y/dx2
-				dif2xYb(p,e,c) = sum(mB(p,:)*Yb(:,e,c)) * 1/((h(e+1)-h(e))^2);
-				# Esta retornando para as variaveis originais
-			end
-		end
+		
+		dif1xYb(1,c)=(Yb(2,c) - Yb(1,c))/dx;
+		
 	end 
 	
-	for e in [1:ne] do
-		for p in [1:np] do
-			# Derivada da primeira: dPIb/dx
-			dif1xPIb(p,e) = sum(mA(p,:)*PIb(:,e)) * 1/(h(e+1)-h(e)); # (h(k+1)-h(k)) = 1/(deltaXk)
-			# Derivada da segunda: d2THETAb/dx2
-			dif1xTHETAb(p,e) = sum(mA(p,:)*THETAb(:,e)) * 1/(h(e+1)-h(e)); # (h(k+1)-h(k)) = 1/(deltaXk)			
-			dif2xTHETAb(p,e) = sum(mB(p,:)*THETAb(:,e)) * 1/((h(e+1)-h(e))^2);
-		end
-	end
-	
-	#Continuidade para o Balanco de Massa no Bulk
-	for c in [1:NComp] do
-		for e in [1:ne-1] do # O numero de fronteiras e ne-1
-			Yb(np,e,c) = Yb(1,e+1,c); 
-			# o ponto final np do elemento k tem que ser
-			# igual ao ponto inicial (1) do elemento seguinte (k+1)		
-			dif1xYb(np,e,c) = dif1xYb(1,e+1,c);
-		end
-	end 
-	
-	#Continuidade para a Equacao do Momentum
-	for e in [1:ne-1] do # O numero de fronteiras e ne-1 
-		PIb(np,e) = PIb(1,e+1);
-	end
-	
-	#Continuidade para a Equacao do Balanco de Energia
-	for e in [1:ne-1] do # O numero de fronteiras e ne-1 
-		THETAb(np,e) = THETAb(1,e+1);
-		dif1xTHETAb(np,e) = dif1xTHETAb(1,e+1);
-	end
 
-	#--------------------------------------------------------------------------------------	
-	# So para deixar os resultados "como um vetorzao em todo o dominio (sem os elementos)"	
-	
-	#desnormalizacao das raizes
-	for e in [1:ne-1] do
-		for p in [1:np] do
-			rr(p,e) = r(p) * (h(e+1)-h(e)) + h(e); #rr resultado primeiro linhas
-		end
-	end
-	
-	for p in [1:np] do
-		rr(p,ne) = r(p) * (h(ne+1)-h(ne)) + h(ne); 
-	end
-	
-	#Criando variável independente em sequencia
-	for p in [1:np] do
-		s(p) = rr(p,1);
-		Z(p) = rr(p,1)*'m';
-	end
-	
-	for e in [2:ne] do
-		for p in [1:np-1] do
-			s((e-1)*np+p-(e-2)) = rr(p+1,e);
-			Z((e-1)*np+p-(e-2)) = rr(p+1,e)*'m';
-		end
-	end
+	# Aproximacao para 1 derivada no contorno x=xf
+	dif1xTHETAb(N+1)=(THETAb(N+1) - THETAb(N))/dx;
+	dif1xPIb(N+1)=(PIb(N+1) - PIb(N))/dx;
 
-	s(ne*np-(ne-1)+1) = h(ne+1); # Acho que deveria ser: s(ne*np-(ne-1)) = h(ne+1);
-	Z(ne*np-(ne-1)+1) = h(ne+1)*'m';
-	
-	#Criando resposta em sequencia para a variavel dependente do balanco de massa
-	for c in [1:NComp] do
-		for p in [1:np] do
-			
-			respYb(p,c) = Yb(p,1,c);
-			respub(p,c) = ub(p,1,c);
-			respub_eq(p,c) = ub_eq(p,1,c);
-				
-			respCb(p,c) = Cb(p,1,c);
-			respzb(p,c) = zb(p,1,c);
-			respqb(p,c) = qb(p,1,c);
-			respqb_eq(p,c) = qb_eq(p,1,c);
-			
-			respzbi(p,c) = zbi(p,1,c);
-			respzi(p,c) = zi(p,1,c);	
-			
-		end
+	for c in [1:NComp] do 
+		
+		dif1xYb(N+1,c)=(Yb(N+1,c) - Yb(N,c))/dx;
+		
 	end
 	
-	for c in [1:NComp] do
-		for e in [2:ne] do
-			for p in [1:np-1] do
-				respYb((e-1)*np+p-(e-2),c) = Yb(p+1,e,c);
-				respub((e-1)*np+p-(e-2),c) = ub(p+1,e,c);
-				respub_eq((e-1)*np+p-(e-2),c) = ub_eq(p+1,e,c);
-				
-				respCb((e-1)*np+p-(e-2),c) = Cb(p+1,e,c);
-				respzb((e-1)*np+p-(e-2),c) = zb(p+1,e,c);
-				respqb((e-1)*np+p-(e-2),c) = qb(p+1,e,c);
-				respqb_eq((e-1)*np+p-(e-2),c) = qb_eq(p+1,e,c);
-				
-				respzbi((e-1)*np+p-(e-2),c) = zbi(p+1,e,c);
-				respzi((e-1)*np+p-(e-2),c) = zi(p+1,e,c);
-			end
+
+	# Aproximacao para a derivada de 1a ordem
+	for i in [2:N] do
+		
+		dif1xTHETAb(i)=(THETAb(i) - THETAb(i-1))/(dx);
+		dif1xPIb(i)=(PIb(i) - PIb(i-1))/(dx);
+		
+	end	
+	
+	for c in [1:NComp] do 
+		
+		for i in [2:N] do
+			dif1xYb(i,c)=(Yb(i,c) - Yb(i-1,c))/(dx);
 		end		
+		
+	end 
+
+	
+	# Aproximacao para a derivada de 2a ordem
+	for i in [2:N] do
+		dif2xTHETAb(i)=(THETAb(i+1) - 2*THETAb(i) + THETAb(i-1))/dx^2;	
 	end
 
-	#Criando resposta em sequencia para a variavel dependente do balanco de energia e momentum
-	for p in [1:np] do
+	for c in [1:NComp] do
 		
-		respTHETAb(p) = THETAb(p,1);
-		respTHETAp(p) = THETAp(p,1);
-		respPIb(p) = PIb(p,1);
-		respPb(p) = Pb(p,1);
-			
-		respTb(p) = Tb(p,1);
-		respTp(p) = Tp(p,1);
-		respTb_C(p) = Tb_C(p,1);
-		respTp_C(p) = Tp_C(p,1);
-			
-		#resprhob(p) = rhob(p,1);
-		
-	end
-
-	for e in [2:ne] do
-		for p in [1:np-1] do
-			
-			respTHETAb((e-1)*np+p-(e-2)) = THETAb(p+1,e);
-			respTHETAp((e-1)*np+p-(e-2)) = THETAp(p+1,e);
-			respPIb((e-1)*np+p-(e-2)) = PIb(p+1,e);
-			respPb((e-1)*np+p-(e-2)) = Pb(p+1,e);
-				
-			respTb((e-1)*np+p-(e-2)) = Tb(p+1,e);
-			respTp((e-1)*np+p-(e-2)) = Tp(p+1,e);
-			respTb_C((e-1)*np+p-(e-2)) = Tb_C(p+1,e);
-			respTp_C((e-1)*np+p-(e-2)) = Tp_C(p+1,e);
-				
-			#resprhob((e-1)*np+p-(e-2)) = rhob(p+1,e);
-			
+		for i in [2:N] do
+			dif2xYb(i,c)=(Yb(i+1,c) - 2*Yb(i,c) + Yb(i-1,c))/dx^2;
 		end
 	end
 	
-
+	# Aproximacao para 1 derivada no contorno x=x0
+	dif2xTHETAb(1)=0;
+	
+	for c in [1:NComp] do 
+		
+		dif2xYb(1,c)=0;
+		
+	end 
+	
+	# Aproximacao para 1 derivada no contorno x=x0
+	dif2xTHETAb(N+1)=0;
+	
+	for c in [1:NComp] do 
+		
+		dif2xYb(N+1,c)=0;
+		
+	end 
 
 end
